@@ -49,5 +49,27 @@ A fully functional Active Directory deomain environment built for learning enter
 ## Project Status
 - Active deployment - Ongoing learning and expanision
 
+# Scripts
+
+This directory contains automation scripts and configuration files created during the homelab project.
+
+## wpa_supplicant_startup.sh
+
+**Purpose:** Systemd service configuration for auto-starting WiFi on Proxmox host at boot.
+
+**Problem Solved:** WiFi adapter (Intel iwlwifi) failed to initialize properly during boot sequence, causing network unavailability.
+
+**Implementation:** Created custom systemd service to ensure wpa_supplicant starts with correct timing and parameters.
+
+**Skills Demonstrated:**
+- Linux systemd service creation
+- Network service troubleshooting
+- Startup order management
+- WiFi authentication configuration
+
+---
+
+*Additional scripts will be added as the project evolves.*
+
 ---
 *This is a personal learning project for IT skill development.*
