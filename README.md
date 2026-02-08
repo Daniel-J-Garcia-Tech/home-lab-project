@@ -71,5 +71,20 @@ This directory contains automation scripts and configuration files created durin
 
 *Additional scripts will be added as the project evolves.*
 
+##Cisco Labs
+A set of different stages of at home labs using Cisco Packet Tracer to learn managed Cisco hardware. Each lab comes with the packet tracer file, readme detailing the lab, and screenshot of the topology, and verification of system working
+- Lab 1 - Basic switch config
+- Lab 2 - VLANs
+- Lab 3 - Inter-VLAN Routing
+
+**Skills Demonstrated:**
+-Switch CLI navigation
+-Security hardening
+-VLAN creation and segmentation
+-Port assignment (individual and range)
+-IP addressing schemes
+-Network isolation testing
+-Configuration verification
+
 ---
 *This is a personal learning project for IT skill development.*

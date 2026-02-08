@@ -1,0 +1,324 @@
+# Lab 2.1: VLANs (Network Segmentation)
+
+## Objective
+Learn how to create and configure VLANs to segment a network into isolated security zones. Devices in different VLANs cannot communicate with each other without routing, providing foundational network security through isolation.
+
+##Lab 2.1
+Switch Configuration:
+
+Hostname: SW1
+Enable secret: Cisco123!
+Console password: Console123
+VTY password: VTY123
+Management IP: 192.168.99.10
+Subnet mask: 255.255.255.0
+Default gateway: 192.168.99.1
+Timeout: 5 minutes, 0 seconds
+
+VLAN Design:
+VLAN 10 - ACCOUNTING
+
+Ports: Fa0/1, Fa0/2
+IP Range: 192.168.0.0/24
+PC0: 192.168.10.10
+PC1: 192.168.10.11
+Gateway: 192.168.10.1
+
+VLAN 20 - IT_DEPART
+
+Ports: Fa0/3, Fa0/4
+IP Range: 192.168.0.0/24
+PC2: 192.168.20.10
+PC3: 192.168.20.11
+Gateway: 192.168.20.1
+
+VLAN 99 - MANAGEMENT
+
+No ports (management only)
+Switch IP: 192.168.99.10/24
+Gateway: 192.168.99.1
+
+## Topology
+- 1x Cisco 2960 Switch (SW1)
+- 4x PCs
+  - PC0 and PC1: VLAN 10 (Accounting)
+  - PC2 and PC3: VLAN 20 (IT Department)
+
+## VLAN Design
+
+### VLAN 10 - ACCOUNTING
+- **Ports:** Fa0/1, Fa0/2
+- **IP Range:** 192.168.10.0/24
+- **Devices:**
+  - PC0: 192.168.10.10
+  - PC1: 192.168.10.11
+  - Gateway: 192.168.10.1 (not configured - for future use)
+
+### VLAN 20 - IT_DEPT
+- **Ports:** Fa0/3, Fa0/4
+- **IP Range:** 192.168.20.0/24
+- **Devices:**
+  - PC2: 192.168.20.10
+  - PC3: 192.168.20.11
+  - Gateway: 192.168.20.1 (not configured - for future use)
+
+### VLAN 99 - MANAGEMENT
+- **Ports:** None (management only)
+- **Switch Management IP:** 192.168.99.10/24
+- **Gateway:** 192.168.99.1
+
+## Skills Practiced
+- Creating VLANs with descriptive names
+- Assigning switch ports to VLANs (access mode)
+- Configuring multiple ports simultaneously (interface range)
+- Moving switch management to a dedicated VLAN
+- Configuring PC IP addresses
+- Testing VLAN isolation with ping tests
+- Verifying VLAN configuration
+
+## Key Commands
+
+### VLAN Creation
+```
+vlan 10
+ name ACCOUNTING
+vlan 20
+ name IT_DEPT
+vlan 99
+ name MANAGEMENT
+```
+
+### Port Assignment (Access Ports)
+```
+! Single port
+interface fastethernet 0/1
+ switchport mode access
+ switchport access vlan 10
+
+! Multiple ports (range)
+interface range fastethernet 0/3-4
+ switchport mode access
+ switchport access vlan 20
+```
+
+### Management VLAN Configuration
+```
+! Remove IP from VLAN 1
+interface vlan 1
+ no ip address
+ shutdown
+
+! Configure VLAN 99 for management
+interface vlan 99
+ ip address 192.168.99.10 255.255.255.0
+ no shutdown
+
+ip default-gateway 192.168.99.1
+```
+
+### Verification Commands
+```
+show vlan brief              - View all VLANs and assigned ports
+show ip interface brief      - View interface status and IPs
+show running-config          - View complete configuration
+```
+
+## Connectivity Tests Performed
+
+### Test 1: Same VLAN Communication (SUCCESS)
+**From PC0 (192.168.10.10) ping PC1 (192.168.10.11):**
+- **Result:** SUCCESS - Replies received
+- **Proves:** Devices in VLAN 10 can communicate with each other
+
+### Test 2: Different VLAN Communication (BLOCKED)
+**From PC0 (192.168.10.10) ping PC2 (192.168.20.10):**
+- **Result:** FAILED - Request timed out
+- **Proves:** VLAN isolation is working - VLAN 10 cannot reach VLAN 20
+
+### Test 3: Same VLAN Communication (SUCCESS)
+**From PC2 (192.168.20.10) ping PC3 (192.168.20.11):**
+- **Result:** SUCCESS - Replies received
+- **Proves:** Devices in VLAN 20 can communicate with each other
+
+## Lessons Learned
+
+### VLANs Provide Security Through Isolation
+- Each VLAN is a separate broadcast domain
+- Traffic cannot cross VLAN boundaries without routing
+- Critical for segmenting sensitive systems (thin clients, servers, management)
+
+### Access Ports vs Trunk Ports
+- **Access ports:** Connect to end devices (PCs, thin clients, phones)
+- **Trunk ports:** Connect to other switches (learned in Lab 3)
+- Always explicitly set `switchport mode access` for security
+
+### Interface Range Command
+- `interface range fa0/1-4` configures multiple ports simultaneously
+- Huge time saver in production environments
+- Ensures consistent configuration across ports
+
+### Management VLAN Best Practice
+- Never use VLAN 1 for management (default, insecure)
+- Create dedicated management VLAN (e.g., VLAN 99)
+- Limit access to management VLAN for security
+
+### VLAN Naming
+- Descriptive names (ACCOUNTING, IT_DEPT) aid documentation
+- Makes troubleshooting and audits easier
+- Essential for compliance in government environments
+
+## Real-World Application
+
+### Air-Gapped Government Network Use Cases:
+- **VLAN 10:** Thin client workstations
+- **VLAN 20:** Server infrastructure (Windows Server, AD, file servers)
+- **VLAN 30:** Classified/secure systems
+- **VLAN 99:** Network management and monitoring
+- **VLANs prevent lateral movement** if one zone is compromised
+
+### Current Limitation:
+VLANs are completely isolated - no inter-VLAN communication possible. In Lab 3, we'll add a router to enable controlled communication between VLANs with security policies (ACLs).
+
+## Configuration Summary
+
+### Switch Configuration
+- **Hostname:** SW1
+- **Enable Secret:** Configured and encrypted (MD5)
+- **Console/VTY Access:** Password protected with timeouts
+- **VLANs Created:** 10 (ACCOUNTING), 20 (IT_DEPT), 99 (MANAGEMENT)
+- **Management IP:** 192.168.99.10/24 on VLAN 99
+
+### Port Assignments
+- **Fa0/1-2:** VLAN 10 (Accounting)
+- **Fa0/3-4:** VLAN 20 (IT Department)
+- **Fa0/5-24, Gig0/1-2:** VLAN 1 (default, unused)
+
+## Start-up Config
+SW1#show startup-config
+Using 1591 bytes
+!
+version 15.0
+no service timestamps log datetime msec
+no service timestamps debug datetime msec
+service password-encryption
+!
+hostname SW1
+!
+enable secret 5 $1$mERr$Pq3/lr0agnISq0fxb9TUZ0
+!
+!
+!
+!
+!
+!
+spanning-tree mode pvst
+spanning-tree extend system-id
+!
+interface FastEthernet0/1
+ switchport access vlan 10
+ switchport mode access
+!
+interface FastEthernet0/2
+ switchport access vlan 10
+ switchport mode access
+!
+interface FastEthernet0/3
+ switchport access vlan 20
+ switchport mode access
+!
+interface FastEthernet0/4
+ switchport access vlan 20
+ switchport mode access
+!
+interface FastEthernet0/5
+!
+interface FastEthernet0/6
+!
+interface FastEthernet0/7
+!
+interface FastEthernet0/8
+!
+interface FastEthernet0/9
+!
+interface FastEthernet0/10
+!
+interface FastEthernet0/11
+!
+interface FastEthernet0/12
+!
+interface FastEthernet0/13
+!
+interface FastEthernet0/14
+!
+interface FastEthernet0/15
+!
+interface FastEthernet0/16
+!
+interface FastEthernet0/17
+!
+interface FastEthernet0/18
+!
+interface FastEthernet0/19
+!
+interface FastEthernet0/20
+!
+interface FastEthernet0/21
+!
+interface FastEthernet0/22
+!
+interface FastEthernet0/23
+!
+interface FastEthernet0/24
+!
+interface GigabitEthernet0/1
+!
+interface GigabitEthernet0/2
+!
+interface Vlan1
+ no ip address
+ shutdown
+!
+interface Vlan99
+ ip address 192.168.99.10 255.255.255.0
+!
+ip default-gateway 192.168.99.1
+!
+!
+!
+!
+line con 0
+ password 7 080243401A16091243595F
+ logging synchronous
+ login
+ exec-timeout 5 0
+!
+line vty 0 4
+ exec-timeout 5 0
+ password 7 08177877584B56
+ login
+line vty 5 15
+ exec-timeout 5 0
+ password 7 08177877584B56
+ login
+!
+!
+!
+!
+end
+
+## Show VLAN Brief
+VLAN Name                             Status    Ports
+---- -------------------------------- --------- -------------------------------
+1    default                          active    Fa0/5, Fa0/6, Fa0/7, Fa0/8
+                                                Fa0/9, Fa0/10, Fa0/11, Fa0/12
+                                                Fa0/13, Fa0/14, Fa0/15, Fa0/16
+                                                Fa0/17, Fa0/18, Fa0/19, Fa0/20
+                                                Fa0/21, Fa0/22, Fa0/23, Fa0/24
+                                                Gig0/1, Gig0/2
+10   ACCOUNTING                       active    Fa0/1, Fa0/2
+20   IT_DEPT                          active    Fa0/3, Fa0/4
+99   MANAGEMENT                       active    
+1002 fddi-default                     active    
+1003 token-ring-default               active    
+1004 fddinet-default                  active    
+1005 trnet-default                    active 

@@ -1,0 +1,146 @@
+# Lab 1.2: Basic Switch Configuration
+
+## Objective
+Learn fundamental Cisco switch configuration including security hardening, management access, and golden config creation.
+
+##LAB 1.2
+Requirements:
+
+Hostname: CORE-SW-DC1
+Enable secret: Pr0t3ct3d!2025
+Console password: LocalAccess99
+VTY password: RemoteSecure88
+Management IP: 172.16.250.10
+Subnet mask: 255.255.255.0
+Default gateway: 172.16.250.1
+Timeout: 3 minutes, 30 seconds
+
+## Topology
+- 1x Cisco 2960 Switch
+- 2x PCs
+
+## Skills Practiced
+- CLI navigation (User EXEC, Privileged EXEC, Global Config modes)
+- Hostname configuration
+- Password security (enable secret, console, VTY)
+- Management IP configuration
+- Configuration backup
+
+## Key Commands
+```
+hostname SW1
+enable secret [password]
+line console 0
+line vty 0 15
+interface vlan 1
+ip address 172.16.250.10 255.255.255.0
+ip default-gateway 172.16.250.1
+write memory
+```
+
+## Lessons Learned
+- `enable secret` uses MD5 encryption vs plaintext
+- VTY lines allow remote SSH access
+- Must use `no shutdown` on VLAN interfaces
+- Packet Tracer has display quirks with timeouts
+
+## Start-up Config
+Core-SW-DC1#show startup-config
+Using 1392 bytes
+!
+version 15.0
+no service timestamps log datetime msec
+no service timestamps debug datetime msec
+service password-encryption
+!
+hostname Core-SW-DC1
+!
+enable secret 5 $1$mERr$OEi.65r6QgHdfgQ2SoXnx.
+!
+!
+!
+!
+!
+!
+spanning-tree mode pvst
+spanning-tree extend system-id
+!
+interface FastEthernet0/1
+!
+interface FastEthernet0/2
+!
+interface FastEthernet0/3
+!
+interface FastEthernet0/4
+!
+interface FastEthernet0/5
+!
+interface FastEthernet0/6
+!
+interface FastEthernet0/7
+!
+interface FastEthernet0/8
+!
+interface FastEthernet0/9
+!
+interface FastEthernet0/10
+!
+interface FastEthernet0/11
+!
+interface FastEthernet0/12
+!
+interface FastEthernet0/13
+!
+interface FastEthernet0/14
+!
+interface FastEthernet0/15
+!
+interface FastEthernet0/16
+!
+interface FastEthernet0/17
+!
+interface FastEthernet0/18
+!
+interface FastEthernet0/19
+!
+interface FastEthernet0/20
+!
+interface FastEthernet0/21
+!
+interface FastEthernet0/22
+!
+interface FastEthernet0/23
+!
+interface FastEthernet0/24
+!
+interface GigabitEthernet0/1
+!
+interface GigabitEthernet0/2
+!
+interface Vlan1
+ ip address 172.16.250.10 255.255.255.0
+!
+ip default-gateway 172.16.250.1
+!
+!
+!
+!
+line con 0
+ password 7 080D434D08152414110E1F177372
+ logging synchronous
+ login
+ exec-timeout 3 30
+!
+line vty 0 4
+ exec-timeout 3 30
+ password 7 08134943060D0024170819162F737C
+ login
+line vty 5 15
+ exec-timeout 3 30
+ password 7 08134943060D0024170819162F737C
+ login
+!
+!
+!
+!
+end

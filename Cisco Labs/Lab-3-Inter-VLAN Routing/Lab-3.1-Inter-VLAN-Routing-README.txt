@@ -1,0 +1,312 @@
+# Lab 3: Inter-VLAN Routing (Router-on-a-Stick)
+
+## Objective
+Enable controlled communication between VLANs using a router. Previously isolated VLANs can now communicate through a central routing point, providing the foundation for segmented yet interconnected networks.
+
+## Topology
+- 1x Cisco 2960 Switch (SW1)
+- 1x Cisco 1941 Router (R1)
+- 4x PCs
+  - PC0 and PC1: VLAN 10 (Accounting)
+  - PC2 and PC3: VLAN 20 (IT Department)
+
+## Network Design
+
+### VLAN 10 - ACCOUNTING
+- **Ports:** Fa0/1, Fa0/2
+- **IP Range:** 192.168.10.0/24
+- **Devices:**
+  - PC0: 192.168.10.10
+  - PC1: 192.168.10.11
+  - Gateway: 192.168.10.1 (Router subinterface Gig0/0.10)
+
+### VLAN 20 - IT_DEPT
+- **Ports:** Fa0/3, Fa0/4
+- **IP Range:** 192.168.20.0/24
+- **Devices:**
+  - PC2: 192.168.20.10
+  - PC3: 192.168.20.11
+  - Gateway: 192.168.20.1 (Router subinterface Gig0/0.20)
+
+### VLAN 99 - MANAGEMENT
+- **Ports:** None (management only)
+- **Switch Management IP:** 192.168.99.10/24
+- **Gateway:** 192.168.99.1 (Router subinterface Gig0/0.99)
+
+### Trunk Link
+- **Switch:** Gig0/1 (trunk port)
+- **Router:** Gig0/0 (physical interface with subinterfaces)
+- **Allowed VLANs:** 10, 20, 99
+- **Native VLAN:** 99
+- **Encapsulation:** 802.1Q
+
+## Key Concepts Learned
+
+### Router-on-a-Stick
+- Single physical connection between switch and router
+- Router uses subinterfaces (virtual interfaces) to handle multiple VLANs
+- All inter-VLAN traffic flows through one trunk link
+- Common in smaller networks or when router ports are limited
+
+### Trunk Ports
+- Carry traffic for multiple VLANs over a single link
+- Use 802.1Q tagging to identify VLAN membership
+- Must be configured on both switch and router ends
+- Access ports = one VLAN, Trunk ports = multiple VLANs
+
+### Subinterfaces
+- Logical interfaces on a physical router port
+- Each subinterface handles one VLAN
+- Acts as the default gateway for that VLAN
+- Best practice: Match subinterface number to VLAN number (Gig0/0.10 for VLAN 10)
+
+### 802.1Q Encapsulation
+- Industry standard for VLAN tagging
+- Adds 4-byte tag to Ethernet frames
+- Tag identifies which VLAN the frame belongs to
+- Router and switch use tags to route traffic correctly
+
+### Native VLAN
+- One VLAN on a trunk carries untagged traffic
+- Default is VLAN 1 (security risk)
+- Best practice: Change to unused VLAN (we used VLAN 99)
+- Must match on both ends of trunk (switch and router)
+
+## Configuration Commands
+
+### Switch Trunk Configuration
+```
+! Enter the trunk port
+interface gigabitethernet 0/1
+ switchport mode trunk
+ switchport trunk allowed vlan 10,20,99
+ switchport trunk native vlan 99
+```
+
+### Router Physical Interface
+```
+! Enable the physical interface (no IP on physical port)
+interface gigabitethernet 0/0
+ no shutdown
+```
+
+### Router Subinterfaces (One per VLAN)
+```
+! VLAN 10 subinterface
+interface gigabitethernet 0/0.10
+ encapsulation dot1q 10
+ ip address 192.168.10.1 255.255.255.0
+
+! VLAN 20 subinterface
+interface gigabitethernet 0/0.20
+ encapsulation dot1q 20
+ ip address 192.168.20.1 255.255.255.0
+
+! VLAN 99 subinterface (management - native VLAN)
+interface gigabitethernet 0/0.99
+ encapsulation dot1q 99 native
+ ip address 192.168.99.1 255.255.255.0
+```
+
+### Router IP Routing
+```
+! Enable IP routing (enabled by default on routers)
+ip routing
+```
+
+## Verification Commands
+
+### Switch Verification
+```
+show interfaces trunk           - View trunk port status and allowed VLANs
+show vlan brief                 - View VLAN configuration
+```
+
+### Router Verification
+```
+show ip interface brief         - View all interfaces and IPs (including subinterfaces)
+show running-config             - View complete configuration
+```
+
+## Connectivity Tests Performed
+
+### Test 1: Same VLAN Communication (Lab 2 Baseline)
+**From PC0 (192.168.10.10) ping PC1 (192.168.10.11):**
+- **Result:** SUCCESS - Replies received
+- **Proves:** Same VLAN communication still works
+
+### Test 2: Inter-VLAN Communication (NEW!)
+**From PC0 (192.168.10.10) ping PC2 (192.168.20.10):**
+- **Result:** SUCCESS - Replies received (previously FAILED in Lab 2)
+- **Proves:** Router is successfully routing between VLANs
+
+### Test 3: Ping Router Gateway
+**From PC0 (192.168.10.10) ping 192.168.10.1:**
+- **Result:** SUCCESS
+- **Proves:** PC can reach its default gateway (router subinterface)
+
+### Test 4: Ping Other VLAN Gateway
+**From PC0 (192.168.10.10) ping 192.168.20.1:**
+- **Result:** SUCCESS
+- **Proves:** Router subinterfaces are reachable across VLANs
+
+## Traffic Flow Example
+
+**PC0 (VLAN 10) pings PC2 (VLAN 20):**
+
+1. PC0 (192.168.10.10) sends packet to gateway 192.168.10.1
+2. Switch receives packet on Fa0/1 (access port, VLAN 10)
+3. Switch tags packet with "VLAN 10" (802.1Q tag)
+4. Switch sends tagged packet out Gig0/1 (trunk port)
+5. Router receives packet on Gig0/0, reads tag "VLAN 10"
+6. Router directs packet to subinterface Gig0/0.10
+7. Router checks routing table: 192.168.20.10 is on VLAN 20 network
+8. Router forwards packet out subinterface Gig0/0.20
+9. Router tags packet with "VLAN 20"
+10. Switch receives tagged packet on Gig0/1 (trunk)
+11. Switch reads tag "VLAN 20"
+12. Switch forwards packet out Fa0/3 (VLAN 20 access port)
+13. PC2 receives packet
+14. Reply follows reverse path
+
+## Trunk Verification Output
+
+### show interfaces trunk (Switch)
+```
+Port        Mode         Encapsulation  Status        Native vlan
+Gig0/1      on           802.1q         trunking      99
+
+Port        Vlans allowed on trunk
+Gig0/1      10,20,99
+
+Port        Vlans allowed and active in management domain
+Gig0/1      10,20,99
+
+Port        Vlans in spanning tree forwarding state and not pruned
+Gig0/1      10,20,99
+```
+
+### show ip interface brief (Router)
+```
+Interface              IP-Address      OK? Method Status                Protocol
+GigabitEthernet0/0     unassigned      YES unset  up                    up
+GigabitEthernet0/0.10  192.168.10.1    YES manual up                    up
+GigabitEthernet0/0.20  192.168.20.1    YES manual up                    up
+GigabitEthernet0/0.99  192.168.99.1    YES manual up                    up
+```
+
+## Real-World Application
+
+### Air-Gapped Government Network Use Case:
+- **VLAN 10 (Thin Clients):** User workstations need to access servers
+- **VLAN 20 (Servers):** Windows Server 2025, AD, file servers, applications
+- **VLAN 99 (Management):** Network device management and monitoring
+- **Router enables:** Thin clients can reach domain controllers, file servers, and applications
+- **Current state:** All traffic allowed between all VLANs (unrestricted)
+- **Next step (Lab 4):** Add ACLs to restrict traffic based on security policies
+
+### Security Considerations (Current State)
+**Advantages:**
+- VLANs provide logical segmentation
+- All traffic flows through central routing point (visibility)
+- Foundation for adding security controls
+
+**Limitations:**
+- No traffic filtering - everything can talk to everything
+- No least-privilege access controls
+- One compromised device could access all VLANs
+
+**Lab 4 will address these by adding Access Control Lists (ACLs) to restrict traffic.**
+
+## Comparison: Lab 2 vs Lab 3
+
+| Feature | Lab 2 (VLANs Only) | Lab 3 (Inter-VLAN Routing) |
+|---------|-------------------|----------------------------|
+| VLAN isolation | Complete isolation | Controlled communication |
+| Cross-VLAN ping | FAILS | SUCCEEDS |
+| Network architecture | Layer 2 only (switching) | Layer 2 + Layer 3 (routing) |
+| Use case | Complete segregation | Segmented but connected |
+| Security | Isolation by default | Open routing (needs ACLs) |
+
+## Lessons Learned
+
+### Why Router-on-a-Stick?
+- Efficient use of router ports (one port handles multiple VLANs)
+- Cost-effective for small to medium networks
+- Common in branch offices and smaller facilities
+- Alternative: Layer 3 switch (more expensive, higher performance)
+
+### Trunk Configuration Best Practices
+1. **Explicitly set allowed VLANs** - Don't rely on "all VLANs" default
+2. **Change native VLAN from VLAN 1** - Security best practice
+3. **Match native VLAN on both ends** - Prevents connectivity issues
+4. **Document trunk links** - Critical for troubleshooting
+
+### Subinterface Naming Convention
+- Match subinterface number to VLAN number (Gig0/0.10 for VLAN 10)
+- Makes configuration intuitive and self-documenting
+- Easier troubleshooting and maintenance
+
+### Router Interface Defaults
+- Router interfaces are **shutdown by default** (unlike switches)
+- Always use `no shutdown` to enable router interfaces
+- Physical interface needs no IP when using subinterfaces
+
+### 802.1Q Tagging
+- Transparent to end devices (PCs don't see VLAN tags)
+- Switches and routers handle tagging/untagging
+- Native VLAN traffic is untagged on the trunk
+
+## Next Steps
+
+**Lab 4 will introduce Access Control Lists (ACLs)** to:
+- Restrict which traffic is allowed between VLANs
+- Implement least-privilege access (thin clients can reach servers, but not vice versa)
+- Block specific protocols or ports
+- Create security zones with defined policies
+- Implement defense-in-depth architecture
+
+**Example ACL use cases:**
+- Allow thin clients to reach domain controllers (port 389, 636, 88, 464)
+- Allow thin clients to reach file servers (port 445)
+- Block all other traffic from thin clients to server VLAN
+- Allow management VLAN full access to all VLANs
+- Deny server-to-thin-client initiated connections
+
+##GigabitEthernet0/0 Config
+interface GigabitEthernet0/0
+ no ip address
+ duplex auto
+ speed auto
+interface GigabitEthernet0/0.10
+ encapsulation dot1Q 10
+ ip address 192.168.10.1 255.255.255.0
+interface GigabitEthernet0/0.20
+ encapsulation dot1Q 20
+ ip address 192.168.20.1 255.255.255.0
+interface GigabitEthernet0/0.99
+ encapsulation dot1Q 99 native
+ ip address 192.168.99.1 255.255.255.0
+
+##IP Interface Brief
+Interface              IP-Address      OK? Method Status                Protocol 
+GigabitEthernet0/0     unassigned      YES unset  up                    up 
+GigabitEthernet0/0.10  192.168.10.1    YES manual up                    up 
+GigabitEthernet0/0.20  192.168.20.1    YES manual up                    up 
+GigabitEthernet0/0.99  192.168.99.1    YES manual up                    up 
+GigabitEthernet0/1     unassigned      YES unset  administratively down down 
+Vlan1                  unassigned      YES unset  administratively down down
+
+##Interface Trunk
+Port        Mode         Encapsulation  Status        Native vlan
+Gig0/1      on           802.1q         trunking      99
+
+Port        Vlans allowed on trunk
+Gig0/1      10,20,99
+
+Port        Vlans allowed and active in management domain
+Gig0/1      10,20,99
+
+Port        Vlans in spanning tree forwarding state and not pruned
+Gig0/1      10,20,99
+```

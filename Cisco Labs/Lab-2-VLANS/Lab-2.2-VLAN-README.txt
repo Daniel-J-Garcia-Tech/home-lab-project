@@ -1,0 +1,300 @@
+# Lab 2 Variation 2: VLANs (Network Segmentation Practice)
+
+## Objective
+Reinforce VLAN configuration skills with different VLAN numbers, naming schemes, and IP addressing. Practice network segmentation for different departments with isolation testing.
+
+##Lab 2.2
+Switch Configuration:
+Hostname: SW-VLAN-02
+Enable secret: VlanSec2025!
+Console password: ConVlan456
+VTY password: RemVlan789
+Management IP: 10.100.50.5
+Subnet mask: 255.255.255.0
+Default gateway: 10.100.50.1
+Timeout: 8 minutes, 0 seconds
+
+VLAN Design:
+VLAN 15 - SALES
+
+Ports: Fa0/1, Fa0/2
+IP Range: 10.15.0.0/24
+PC0: 10.15.0.10
+PC1: 10.15.0.11
+Gateway: 10.15.0.1
+
+VLAN 25 - ENGINEERING
+
+Ports: Fa0/3, Fa0/4
+IP Range: 10.25.0.0/24
+PC2: 10.25.0.10
+PC3: 10.25.0.11
+Gateway: 10.25.0.1
+
+VLAN 88 - MANAGEMENT
+
+No ports (management only)
+Switch IP: 10.100.50.5/24
+Gateway: 10.100.50.1
+
+## Topology
+- 1x Cisco 2960 Switch (SW-VLAN-02)
+- 4x PCs
+  - PC0 and PC1: VLAN 15 (Sales)
+  - PC2 and PC3: VLAN 25 (Engineering)
+
+## VLAN Design
+
+### VLAN 15 - SALES
+- **Ports:** Fa0/1, Fa0/2
+- **IP Range:** 10.15.0.0/24
+- **Devices:**
+  - PC0: 10.15.0.10
+  - PC1: 10.15.0.11
+  - Gateway: 10.15.0.1 (not configured - for future use)
+
+### VLAN 25 - ENGINEERING
+- **Ports:** Fa0/3, Fa0/4
+- **IP Range:** 10.25.0.0/24
+- **Devices:**
+  - PC2: 10.25.0.10
+  - PC3: 10.25.0.11
+  - Gateway: 10.25.0.1 (not configured - for future use)
+
+### VLAN 88 - MANAGEMENT
+- **Ports:** None (management only)
+- **Switch Management IP:** 10.100.50.5/24
+- **Gateway:** 10.100.50.1
+
+## Switch Configuration Summary
+- **Hostname:** SW-VLAN-02
+- **Enable Secret:** VlanSec2025! (encrypted with MD5)
+- **Console Password:** ConVlan456 (encrypted with Type 7)
+- **VTY Password:** RemVlan789 (encrypted with Type 7)
+- **Exec Timeout:** 8 minutes, 0 seconds (console and VTY)
+- **Password Encryption:** Enabled globally
+
+## Skills Reinforced
+- VLAN creation with different numbering schemes
+- Department-based VLAN naming conventions
+- Port assignment using individual and range commands
+- Management VLAN best practices (dedicated VLAN 88)
+- 10.x.x.x IP addressing schemes
+- VLAN isolation verification
+
+## Configuration Commands Used
+
+### VLAN Creation
+```
+vlan 15
+ name SALES
+vlan 25
+ name ENGINEERING
+vlan 88
+ name MANAGEMENT
+```
+
+### Port Assignment
+```
+interface range fastethernet 0/1-2
+ switchport mode access
+ switchport access vlan 15
+
+interface range fastethernet 0/3-4
+ switchport mode access
+ switchport access vlan 25
+```
+
+### Management VLAN
+```
+interface vlan 1
+ no ip address
+ shutdown
+
+interface vlan 88
+ ip address 10.100.50.5 255.255.255.0
+ no shutdown
+
+ip default-gateway 10.100.50.1
+```
+
+## Connectivity Tests Performed
+
+### Test 1: Same VLAN Communication (VLAN 15)
+**From PC0 (10.15.0.10) ping PC1 (10.15.0.11):**
+- **Result:** SUCCESS - Replies received
+- **Proves:** VLAN 15 devices can communicate
+
+### Test 2: Same VLAN Communication (VLAN 25)
+**From PC2 (10.25.0.10) ping PC3 (10.25.0.11):**
+- **Result:** SUCCESS - Replies received
+- **Proves:** VLAN 25 devices can communicate
+
+### Test 3: Cross-VLAN Communication (BLOCKED)
+**From PC0 (10.15.0.10) ping PC2 (10.25.0.10):**
+- **Result:** FAILED - Request timed out
+- **Proves:** VLAN isolation working - Sales cannot reach Engineering
+```
+
+## Key Differences from Lab 2 Original
+- Different VLAN numbers (15, 25, 88 vs 10, 20, 99)
+- Different department names (SALES, ENGINEERING vs ACCOUNTING, IT_DEPT)
+- 10.x.x.x IP scheme vs 192.168.x.x scheme
+- Different timeout value (8 minutes vs 5 minutes)
+- Practice with variety builds adaptability
+
+## Real-World Application
+- **VLAN 15 (SALES):** Could represent customer-facing systems or CRM workstations
+- **VLAN 25 (ENGINEERING):** Could represent development environments or CAD workstations
+- **VLAN 88 (MANAGEMENT):** Network device management and monitoring
+- Segmentation prevents data leakage between departments
+- Critical for compliance (SOX, HIPAA, government security standards)
+
+## Lessons Reinforced
+
+### Consistent Configuration Patterns
+- Same security hardening across all switches
+- Standardized VLAN numbering makes scaling easier
+- Descriptive names aid troubleshooting
+
+### IP Addressing Schemes
+- VLAN number can match third octet (VLAN 15 = 10.15.0.0/24)
+- Makes IP-to-VLAN mapping intuitive
+- Simplifies documentation and troubleshooting
+
+### Security Through Segmentation
+- Each department isolated by default
+- Lateral movement prevented in case of breach
+- Foundation for Zero Trust architecture
+
+##Lab Startup config
+Building configuration...
+
+Current configuration : 1590 bytes
+!
+version 15.0
+no service timestamps log datetime msec
+no service timestamps debug datetime msec
+service password-encryption
+!
+hostname SW-VLAN-02
+!
+enable secret 5 $1$mERr$wXPpse5QJr2q1otJWdJAG.
+!
+!
+!
+!
+!
+!
+spanning-tree mode pvst
+spanning-tree extend system-id
+!
+interface FastEthernet0/1
+ switchport access vlan 15
+ switchport mode access
+!
+interface FastEthernet0/2
+ switchport access vlan 15
+ switchport mode access
+!
+interface FastEthernet0/3
+ switchport access vlan 25
+ switchport mode access
+!
+interface FastEthernet0/4
+ switchport access vlan 25
+ switchport mode access
+!
+interface FastEthernet0/5
+!
+interface FastEthernet0/6
+!
+interface FastEthernet0/7
+!
+interface FastEthernet0/8
+!
+interface FastEthernet0/9
+!
+interface FastEthernet0/10
+!
+interface FastEthernet0/11
+!
+interface FastEthernet0/12
+!
+interface FastEthernet0/13
+!
+interface FastEthernet0/14
+!
+interface FastEthernet0/15
+!
+interface FastEthernet0/16
+!
+interface FastEthernet0/17
+!
+interface FastEthernet0/18
+!
+interface FastEthernet0/19
+!
+interface FastEthernet0/20
+!
+interface FastEthernet0/21
+!
+interface FastEthernet0/22
+!
+interface FastEthernet0/23
+!
+interface FastEthernet0/24
+!
+interface GigabitEthernet0/1
+!
+interface GigabitEthernet0/2
+!
+interface Vlan1
+ no ip address
+ shutdown
+!
+interface Vlan88
+ ip address 10.100.50.5 255.255.255.0
+!
+ip default-gateway 10.100.50.1
+!
+!
+!
+!
+line con 0
+ password 7 080243403F150419465E5A
+ login
+ exec-timeout 8 0
+!
+line vty 0 4
+ exec-timeout 8 0
+ password 7 081349433F150419455355
+ login
+line vty 5 15
+ exec-timeout 8 0
+ password 7 081349433F150419455355
+ login
+!
+!
+!
+!
+end
+
+##VLAN Brief
+SW-VLAN-02#show vlan brief
+
+VLAN Name                             Status    Ports
+---- -------------------------------- --------- -------------------------------
+1    default                          active    Fa0/5, Fa0/6, Fa0/7, Fa0/8
+                                                Fa0/9, Fa0/10, Fa0/11, Fa0/12
+                                                Fa0/13, Fa0/14, Fa0/15, Fa0/16
+                                                Fa0/17, Fa0/18, Fa0/19, Fa0/20
+                                                Fa0/21, Fa0/22, Fa0/23, Fa0/24
+                                                Gig0/1, Gig0/2
+15   SALES                            active    Fa0/1, Fa0/2
+25   ENGINEERING                      active    Fa0/3, Fa0/4
+88   MANAGEMENT                       active    
+1002 fddi-default                     active    
+1003 token-ring-default               active    
+1004 fddinet-default                  active    
+1005 trnet-default                    active    
