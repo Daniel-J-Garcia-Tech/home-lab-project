@@ -1,0 +1,287 @@
+# Lab 3 Variation 2: Inter-VLAN Routing with Different VLANs and IP Scheme
+
+## Objective
+Reinforce inter-VLAN routing concepts using router-on-a-stick with different VLAN numbers, IP addressing schemes, and department names. Practice trunk configuration and subinterface creation with 10.x.x.x networks.
+
+## Topology
+- 1x Cisco 2960 Switch (SW-SALES-ENG)
+- 1x Cisco 1941 Router (R-SALES-ENG)
+- 4x PCs
+  - PC0 and PC1: VLAN 50 (Sales)
+  - PC2 and PC3: VLAN 60 (Engineering)
+
+## Network Design
+
+### VLAN 50 - SALES
+- **Ports:** Fa0/1, Fa0/2
+- **IP Range:** 10.50.0.0/24
+- **Devices:**
+  - PC0: 10.50.0.10
+  - PC1: 10.50.0.11
+  - Gateway: 10.50.0.1 (Router subinterface Gig0/0.50)
+
+### VLAN 60 - ENGINEERING
+- **Ports:** Fa0/3, Fa0/4
+- **IP Range:** 10.60.0.0/24
+- **Devices:**
+  - PC2: 10.60.0.10
+  - PC3: 10.60.0.11
+  - Gateway: 10.60.0.1 (Router subinterface Gig0/0.60)
+
+### VLAN 100 - MANAGEMENT
+- **Ports:** None (management only)
+- **Switch Management IP:** 10.100.0.10/24
+- **Gateway:** 10.100.0.1 (Router subinterface Gig0/0.100)
+
+### Trunk Link
+- **Switch:** Gig0/1 (trunk port)
+- **Router:** Gig0/0 (physical interface with subinterfaces)
+- **Allowed VLANs:** 50, 60, 100
+- **Native VLAN:** 100
+- **Encapsulation:** 802.1Q
+
+## Switch Configuration Summary
+- **Hostname:** SW-SALES-ENG
+- **Enable Secret:** SecureSwitch2025! (encrypted with MD5)
+- **Console Password:** ConSales456 (encrypted with Type 7)
+- **VTY Password:** VtySales789 (encrypted with Type 7)
+- **Exec Timeout:** 6 minutes, 0 seconds
+- **Password Encryption:** Enabled globally
+
+## Router Configuration Summary
+- **Hostname:** R-SALES-ENG
+- **Enable Secret:** SecureRouter2025! (encrypted with MD5)
+- **Console Password:** ConRouter456 (encrypted with Type 7)
+- **VTY Password:** VtyRouter789 (encrypted with Type 7)
+- **Exec Timeout:** 6 minutes, 0 seconds
+- **Password Encryption:** Enabled globally
+- **IP Routing:** Enabled
+
+## Skills Reinforced
+
+### Different VLAN Numbering
+- Lab 3 Original: VLANs 10, 20, 99
+- Lab 3 Variation 2: VLANs 50, 60, 100
+- Practice with non-standard VLAN numbers
+- Understand VLANs are just logical identifiers
+
+### 10.x.x.x IP Addressing
+- Private Class A network (10.0.0.0/8)
+- VLAN number matches third octet (VLAN 50 = 10.50.0.0/24)
+- Easy to identify VLAN from IP address
+- Common in enterprise environments
+
+### Subinterface Best Practice
+- Gig0/0.50 for VLAN 50
+- Gig0/0.60 for VLAN 60
+- Gig0/0.100 for VLAN 100
+- Consistent naming = easier troubleshooting
+
+## Configuration Commands
+
+### Switch VLAN Creation
+```
+vlan 50
+ name SALES
+vlan 60
+ name ENGINEERING
+vlan 100
+ name MANAGEMENT
+```
+
+### Switch Port Assignment
+```
+interface range fastethernet 0/1-2
+ switchport mode access
+ switchport access vlan 50
+
+interface range fastethernet 0/3-4
+ switchport mode access
+ switchport access vlan 60
+```
+
+### Switch Management VLAN
+```
+interface vlan 1
+ no ip address
+ shutdown
+
+interface vlan 100
+ ip address 10.100.0.10 255.255.255.0
+ no shutdown
+
+ip default-gateway 10.100.0.1
+```
+
+### Switch Trunk Configuration
+```
+interface gigabitethernet 0/1
+ switchport mode trunk
+ switchport trunk allowed vlan 50,60,100
+ switchport trunk native vlan 100
+```
+
+### Router Physical Interface
+```
+interface gigabitethernet 0/0
+ no shutdown
+```
+
+### Router Subinterfaces
+```
+interface gigabitethernet 0/0.50
+ encapsulation dot1q 50
+ ip address 10.50.0.1 255.255.255.0
+
+interface gigabitethernet 0/0.60
+ encapsulation dot1q 60
+ ip address 10.60.0.1 255.255.255.0
+
+interface gigabitethernet 0/0.100
+ encapsulation dot1q 100 native
+ ip address 10.100.0.1 255.255.255.0
+```
+
+## Verification Output
+
+### show vlan brief (Switch)
+```
+VLAN Name                             Status    Ports
+---- -------------------------------- --------- -------------------------------
+1    default                          active    Fa0/5-24, Gig0/2
+50   SALES                            active    Fa0/1, Fa0/2
+60   ENGINEERING                      active    Fa0/3, Fa0/4
+100  MANAGEMENT                       active
+```
+
+### show interfaces trunk (Switch)
+```
+Port        Mode         Encapsulation  Status        Native vlan
+Gig0/1      on           802.1q         trunking      100
+
+Port        Vlans allowed on trunk
+Gig0/1      50,60,100
+
+Port        Vlans allowed and active in management domain
+Gig0/1      50,60,100
+
+Port        Vlans in spanning tree forwarding state and not pruned
+Gig0/1      50,60,100
+```
+
+### show ip interface brief (Router)
+```
+Interface              IP-Address      OK? Method Status                Protocol
+GigabitEthernet0/0     unassigned      YES unset  up                    up
+GigabitEthernet0/0.50  10.50.0.1       YES manual up                    up
+GigabitEthernet0/0.60  10.60.0.1       YES manual up                    up
+GigabitEthernet0/0.100 10.100.0.1      YES manual up                    up
+```
+
+## Connectivity Tests Performed
+
+### Test 1: Same VLAN Communication (VLAN 50)
+**From PC0 (10.50.0.10) ping PC1 (10.50.0.11):**
+- **Result:** SUCCESS - Replies received
+- **Proves:** VLAN 50 devices can communicate
+
+### Test 2: Same VLAN Communication (VLAN 60)
+**From PC2 (10.60.0.10) ping PC3 (10.60.0.11):**
+- **Result:** SUCCESS - Replies received
+- **Proves:** VLAN 60 devices can communicate
+
+### Test 3: Inter-VLAN Communication
+**From PC0 (10.50.0.10) ping PC2 (10.60.0.10):**
+- **Result:** SUCCESS - Replies received
+- **Proves:** Router is successfully routing between VLAN 50 and VLAN 60
+
+### Test 4: Ping Own Gateway
+**From PC0 (10.50.0.10) ping 10.50.0.1:**
+- **Result:** First ping timed out, subsequent pings SUCCESS
+- **Proves:** ARP resolution working normally (expected behavior)
+
+### Test 5: Ping Other VLAN Gateway
+**From PC0 (10.50.0.10) ping 10.60.0.1:**
+- **Result:** SUCCESS - Replies received
+- **Proves:** Can reach other VLAN gateways through routing
+
+## ARP Resolution Observed
+
+### First Ping Timeout Phenomenon
+**Observed behavior:**
+```
+Pinging 10.50.0.1 with 32 bytes of data:
+Request timed out.              ← First ping
+Reply from 10.50.0.1: bytes=32 time<1ms TTL=255
+Reply from 10.50.0.1: bytes=32 time<1ms TTL=255
+Reply from 10.50.0.1: bytes=32 time<1ms TTL=255
+```
+
+**Why this happens:**
+1. PC knows gateway IP (10.50.0.1) but not MAC address
+2. PC sends ARP request: "Who has 10.50.0.1?"
+3. Router replies with its MAC address
+4. ARP resolution takes time - first ping times out
+5. MAC address is cached in ARP table
+6. Subsequent pings succeed immediately
+
+**This is normal and expected behavior in TCP/IP networks.**
+
+**Verification:**
+- Second ping attempt to same IP: All 4 pings succeed (ARP cached)
+- ARP cache timeout: Typically 2-5 minutes on most devices
+- View ARP cache on PC: `arp -a` command
+
+## Key Differences from Lab 3 Original
+
+| Feature | Lab 3 Original | Lab 3 Variation 2 |
+|---------|---------------|-------------------|
+| VLAN Numbers | 10, 20, 99 | 50, 60, 100 |
+| IP Scheme | 192.168.x.0/24 | 10.x.0.0/24 |
+| Department Names | ACCOUNTING, IT_DEPT | SALES, ENGINEERING |
+| Native VLAN | 99 | 100 |
+| Timeout | 5 minutes | 6 minutes |
+
+## Lessons Reinforced
+
+### VLAN Flexibility
+- VLAN numbers are arbitrary (can use 1-4094, avoid 1 and 1002-1005)
+- Naming convention should match organization structure
+- Consistent numbering scheme aids documentation
+
+### IP Addressing Schemes
+- 10.x.x.x networks common in large enterprises (16.7 million addresses)
+- Matching VLAN to third octet (VLAN 50 = 10.50.x.x) is intuitive
+- Makes troubleshooting easier ("I'm in the 10.60 network, so I'm in VLAN 60")
+
+### Native VLAN Security
+- Changing native VLAN from default (VLAN 1) improves security
+- Using management VLAN as native (VLAN 100) is acceptable
+- Best practice: Use dedicated unused VLAN for native (e.g., VLAN 999)
+
+### ARP Protocol Understanding
+- First ping to new destination often times out (ARP learning)
+- This is normal Layer 2 behavior, not a problem
+- Important to understand for troubleshooting
+- Don't panic when first ping fails - try again
+
+## Real-World Application
+
+### Department-Based Segmentation:
+- **VLAN 50 (Sales):** CRM workstations, sales tools, customer databases
+- **VLAN 60 (Engineering):** CAD workstations, development servers, code repositories
+- **VLAN 100 (Management):** Network infrastructure management and monitoring
+
+### Why Separate Sales and Engineering:
+- Different data sensitivity levels
+- Different access requirements
+- Compliance and audit requirements
+- Performance isolation (CAD doesn't impact CRM)
+
+### Current State:
+- All VLANs can communicate freely
+- No traffic restrictions between departments
+- Foundation is ready for ACL implementation (Lab 4)
+
+## Next Steps
+Continue practicing router-on-a-stick configuration with different VLAN numbers and IP schemes to build muscle memory. Lab 4 will add Access Control Lists (ACLs) to restrict inter-VLAN traffic based on security policies.

@@ -1,0 +1,124 @@
+Lab 4: Access Control Lists (ACLs)
+Objective
+Implement Access Control Lists to control traffic flow between VLANs based on security policies. Enforce least-privilege access while maintaining necessary network connectivity.
+Lab Requirements
+Security Policy:
+
+Thin clients (VLAN 10) can initiate connections to servers (VLAN 20)
+Servers (VLAN 20) cannot initiate connections to thin clients (VLAN 10)
+Management VLAN (99) has full access to all VLANs
+All other traffic denied by default
+
+Topology
+
+1x Cisco 2960 Switch (SW1)
+1x Cisco 1941 Router (R1)
+4x PCs (2 in VLAN 10, 2 in VLAN 20)
+Trunk link: Switch Gig0/1 ↔ Router Gig0/0
+
+Network Configuration
+VLAN 10 - THIN_CLIENTS (192.168.10.0/24)
+
+PC0: 192.168.10.10
+PC1: 192.168.10.11
+Gateway: 192.168.10.1
+
+VLAN 20 - SERVERS (192.168.20.0/24)
+
+PC2: 192.168.20.10
+PC3: 192.168.20.11
+Gateway: 192.168.20.1
+
+VLAN 99 - MANAGEMENT (192.168.99.0/24)
+
+Switch: 192.168.99.10
+Gateway: 192.168.99.1
+
+Trunk:
+
+Allowed VLANs: 10, 20, 99
+Native VLAN: 99
+
+ACL Configuration
+Extended ACL: PROTECT_THIN_CLIENTS
+ip access-list extended PROTECT_THIN_CLIENTS
+ 10 permit icmp 192.168.10.0 0.0.0.255 any
+ 12 permit icmp any 192.168.10.0 0.0.0.255 echo-reply
+ 15 permit icmp 192.168.99.0 0.0.0.255 any
+ 20 permit tcp any any established
+ 30 permit ip 192.168.99.0 0.0.0.255 any
+
+interface gigabitethernet 0/0.10
+ ip access-group PROTECT_THIN_CLIENTS out
+What Each Rule Does
+
+Rule 10: Thin clients can send ICMP (pings) to any destination
+Rule 12: Allow ping replies back to thin clients (but not ping requests from servers)
+Rule 15: Management VLAN can send ICMP anywhere
+Rule 20: Allow return TCP traffic for connections initiated by thin clients
+Rule 30: Management VLAN has full IP access to all destinations
+Implicit Deny: Everything else blocked
+
+Test Results
+Before ACL
+
+✓ Thin client → Server: WORKS
+✓ Server → Thin client: WORKS
+No security restrictions
+
+After ACL
+
+✓ Thin client → Server: WORKS (allowed)
+✗ Server → Thin client: BLOCKED (security working)
+✓ Thin client → Thin client: WORKS (same VLAN)
+✓ Server → Server: WORKS (same VLAN)
+
+Verification Output
+Router#show access-lists
+Extended IP access list PROTECT_THIN_CLIENTS
+    10 permit icmp 192.168.10.0 0.0.0.255 any
+    12 permit icmp any 192.168.10.0 0.0.0.255 echo-reply (8 match(es))
+    15 permit icmp 192.168.99.0 0.0.0.255 any
+    20 permit tcp any any established
+    30 permit ip 192.168.99.0 0.0.0.255 any
+Router#show ip interface gigabitethernet 0/0.10
+GigabitEthernet0/0.10 is up, line protocol is up (connected)
+  Internet address is 192.168.10.1/24
+  Outgoing access list is PROTECT_THIN_CLIENTS
+  Inbound access list is not set
+Issues Encountered and Solutions
+Issue 1: Initial ACL Too Permissive
+Problem: First ACL rule was permit icmp any any - allowed all ICMP including server-to-thin-client pings
+Solution: Changed to specific rules:
+
+permit icmp 192.168.10.0 0.0.0.255 any (thin clients can ping out)
+permit icmp any 192.168.10.0 0.0.0.255 echo-reply (only ping replies back, not requests)
+
+Issue 2: Thin Clients Couldn't Ping Servers
+Problem: After fixing Issue 1, thin clients could send pings but never received replies
+Root Cause: Server ping replies were being blocked by the ACL (replies came from server network, not thin client network)
+Solution: Added rule 12 to allow ICMP echo-reply from any source to thin clients
+
+Thin client sends ping request → not blocked (leaves VLAN 10)
+Server sends ping reply → allowed by rule 12 (echo-reply specifically)
+Server tries to initiate new ping → blocked (echo-request from server not permitted)
+
+What Was Accomplished
+✓ Extended ACL created with named configuration
+✓ ACL applied to router subinterface in outbound direction
+✓ Thin clients can access servers (user connectivity maintained)
+✓ Servers cannot initiate connections to thin clients (security enforced)
+✓ Management VLAN retains full access
+✓ Implicit deny blocks all unauthorized traffic
+✓ Wildcard masks used correctly for network matching
+✓ Established TCP connections allowed for return traffic
+✓ ICMP granular control (echo-reply vs echo-request)
+
+Key Takeaways
+ACL rule order matters (first match wins)
+Wildcard masks are inverse of subnet masks
+established keyword critical for allowing return TCP traffic
+ICMP echo-reply vs echo-request provides granular control
+ACLs applied outbound filter traffic going TO the destination
+Match counters useful for verifying ACL is working
+Testing both allowed and blocked traffic essential
