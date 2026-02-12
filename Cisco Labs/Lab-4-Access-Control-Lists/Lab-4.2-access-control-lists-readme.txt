@@ -1,0 +1,162 @@
+# Lab 4 Variation 4: Access Control Lists - Guest WiFi Security
+
+## Objective
+Implement Access Control Lists to protect guest WiFi network from internet gateway-initiated connections while allowing guests to access internet resources.
+
+## Lab Requirements
+
+**Security Policy:**
+1. Guest WiFi (VLAN 80) can initiate connections to internet gateway (VLAN 90)
+2. Internet gateway (VLAN 90) cannot initiate connections to guest WiFi (VLAN 80)
+3. Management VLAN (200) has full access to all VLANs
+4. All other traffic denied by default
+
+## Topology
+- 1x Cisco 2960 Switch (SW-GUEST-NET)
+- 1x Cisco 1941 Router (R-GUEST-NET)
+- 4x PCs (2 in VLAN 80, 2 in VLAN 90)
+- Trunk link: Switch Gig0/1 ↔ Router Gig0/0
+
+## Network Configuration
+
+**VLAN 80 - GUEST_WIFI (10.80.0.0/24)**
+- PC0: 10.80.0.10
+- PC1: 10.80.0.11
+- Gateway: 10.80.0.1
+
+**VLAN 90 - INTERNET_GATEWAY (10.90.0.0/24)**
+- PC2: 10.90.0.10
+- PC3: 10.90.0.11
+- Gateway: 10.90.0.1
+
+**VLAN 200 - MANAGEMENT (10.200.0.0/24)**
+- Switch: 10.200.0.10
+- Gateway: 10.200.0.1
+
+**Trunk:**
+- Allowed VLANs: 80, 90, 200
+- Native VLAN: 200
+
+## ACL Configuration
+
+**Extended ACL: PROTECT_GUEST_WIFI**
+```
+ip access-list extended PROTECT_GUEST_WIFI
+ 10 permit icmp 10.80.0.0 0.0.0.255 any
+ 20 permit icmp any 10.80.0.0 0.0.0.255 echo-reply
+ 30 permit icmp 10.200.0.0 0.0.0.255 any
+ 40 permit tcp any any established
+ 50 permit ip 10.200.0.0 0.0.0.255 any
+
+interface gigabitethernet 0/0.80
+ ip access-group PROTECT_GUEST_WIFI out
+```
+
+## What Each Rule Does
+
+- **Rule 10:** Guest WiFi can send ICMP (pings) to any destination
+- **Rule 20:** Allow ping replies back to guest WiFi (but not ping requests from gateway)
+- **Rule 30:** Management VLAN can send ICMP anywhere
+- **Rule 40:** Allow return TCP traffic for connections initiated by guest WiFi
+- **Rule 50:** Management VLAN has full IP access to all destinations
+- **Implicit Deny:** Everything else blocked
+
+## Test Results
+
+### Before ACL
+- ✓ Guest WiFi → Internet Gateway: WORKS
+- ✓ Internet Gateway → Guest WiFi: WORKS
+- No security restrictions
+
+### After ACL
+- ✓ Guest WiFi → Internet Gateway: WORKS (allowed)
+- ✗ Internet Gateway → Guest WiFi: BLOCKED (security working)
+- ✓ Guest WiFi → Guest WiFi: WORKS (same VLAN)
+- ✓ Internet Gateway → Internet Gateway: WORKS (same VLAN)
+
+## Verification Output
+
+```
+SW-GUEST-NET#show vlan brief
+
+VLAN Name                             Status    Ports
+---- -------------------------------- --------- -------------------------------
+1    default                          active    Fa0/5-24, Gig0/2
+80   GUEST-WIFI                       active    Fa0/1, Fa0/2
+90   INTERNET-GATEWAY                 active    Fa0/3, Fa0/4
+200  MANAGEMENT                       active
+```
+
+```
+SW-GUEST-NET#show interfaces trunk
+Port        Mode         Encapsulation  Status        Native vlan
+Gig0/1      on           802.1q         trunking      200
+
+Port        Vlans allowed on trunk
+Gig0/1      80,90,200
+
+Port        Vlans allowed and active in management domain
+Gig0/1      80,90,200
+```
+
+```
+R-GUEST-NET#show ip interface brief
+Interface              IP-Address      OK? Method Status                Protocol
+GigabitEthernet0/0     unassigned      YES unset  up                    up
+GigabitEthernet0/0.80  10.80.0.1       YES manual up                    up
+GigabitEthernet0/0.90  10.90.0.1       YES manual up                    up
+GigabitEthernet0/0.200 10.200.0.1      YES manual up                    up
+```
+
+```
+R-GUEST-NET#show access-list
+Extended IP access list PROTECT_GUEST_WIFI
+    10 permit icmp 10.80.0.0 0.0.0.255 any
+    20 permit icmp any 10.80.0.0 0.0.0.255 echo-reply (3 match(es))
+    30 permit icmp 10.200.0.0 0.0.0.255 any
+    40 permit tcp any any established
+    50 permit ip 10.200.0.0 0.0.0.255 any
+```
+
+```
+R-GUEST-NET#show ip interface gigabitethernet 0/0.80
+GigabitEthernet0/0.80 is up, line protocol is up (connected)
+  Internet address is 10.80.0.1/24
+  Outgoing access list is PROTECT_GUEST_WIFI
+  Inbound access list is not set
+```
+
+## Issues Encountered and Solutions
+
+No major issues encountered in this variation. Configuration was completed successfully on first attempt.
+
+## What Was Accomplished
+
+✓ Extended ACL created with named configuration (PROTECT_GUEST_WIFI)
+✓ ACL applied to router subinterface Gig0/0.80 in outbound direction
+✓ Guest WiFi users can access internet gateway (user connectivity maintained)
+✓ Internet gateway cannot initiate connections to guest WiFi (security enforced)
+✓ Management VLAN retains full access to all networks
+✓ Implicit deny blocks all unauthorized traffic
+✓ Wildcard masks used correctly (10.x.0.0 0.0.0.255 matches /24 subnets)
+✓ Established TCP connections allowed for return traffic
+✓ ICMP granular control (echo-reply vs echo-request)
+✓ All verification commands executed successfully
+✓ Ping tests confirmed security policy working as designed
+
+## Real-World Application
+
+This configuration represents a typical guest WiFi security setup:
+- Guest users can access internet resources (outbound connections allowed)
+- Internet-facing systems cannot attack guest devices (inbound connections blocked)
+- Network administrators retain full access for troubleshooting and management
+- Defense-in-depth: Even if internet gateway is compromised, it cannot reach guest devices
+
+## Key Takeaways
+
+- ACLs provide granular control over network traffic flow
+- Outbound ACL on Gig0/0.80 filters traffic going TO guest WiFi VLAN
+- `established` keyword allows return traffic without allowing new inbound connections
+- ICMP echo-reply permits ping responses while blocking ping requests from gateway
+- Wildcard masks work correctly across different IP addressing schemes (10.x networks)
+- Match counters on rule 20 (3 matches) indicate successful ping replies

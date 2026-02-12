@@ -1,0 +1,283 @@
+# Lab 5: Redundancy and High Availability with HSRP
+
+## Objective
+Implement Hot Standby Router Protocol (HSRP) to provide router redundancy and automatic failover. Ensure network uptime by eliminating single points of failure at the gateway layer.
+
+## Lab Requirements
+
+**High Availability Goals:**
+1. Provide redundant routers for gateway services
+2. Automatic failover if primary router fails
+3. Transparent failover to end users (minimal downtime)
+4. Automatic recovery when failed router comes back online
+
+## Topology
+- 1x Cisco 2960 Switch (SW1)
+- 2x Cisco 1941 Routers (R1 - Primary, R2 - Backup)
+- 4x PCs (2 in VLAN 10, 2 in VLAN 20)
+- Dual trunk links: Switch Gig0/1 ↔ R1 Gig0/0, Switch Gig0/2 ↔ R2 Gig0/0
+
+## Network Configuration
+
+**VLAN 10 - USERS (192.168.10.0/24)**
+- PC0: 192.168.10.10
+- PC1: 192.168.10.11
+- R1 Interface: 192.168.10.2
+- R2 Interface: 192.168.10.3
+- **HSRP Virtual Gateway: 192.168.10.1** (what PCs use)
+
+**VLAN 20 - SERVERS (192.168.20.0/24)**
+- PC2: 192.168.20.10
+- PC3: 192.168.20.11
+- R1 Interface: 192.168.20.2
+- R2 Interface: 192.168.20.3
+- **HSRP Virtual Gateway: 192.168.20.1** (what PCs use)
+
+**VLAN 99 - MANAGEMENT (192.168.99.0/24)**
+- Switch: 192.168.99.10
+- R1 Interface: 192.168.99.2
+- R2 Interface: 192.168.99.3
+- **HSRP Virtual Gateway: 192.168.99.1**
+
+## HSRP Configuration
+
+### Router 1 (R1 - Primary/Active)
+
+**Subinterfaces with HSRP:**
+```
+interface gigabitethernet 0/0.10
+ encapsulation dot1q 10
+ ip address 192.168.10.2 255.255.255.0
+ standby 10 ip 192.168.10.1
+ standby 10 priority 110
+ standby 10 preempt
+
+interface gigabitethernet 0/0.20
+ encapsulation dot1q 20
+ ip address 192.168.20.2 255.255.255.0
+ standby 20 ip 192.168.20.1
+ standby 20 priority 110
+ standby 20 preempt
+
+interface gigabitethernet 0/0.99
+ encapsulation dot1q 99 native
+ ip address 192.168.99.2 255.255.255.0
+ standby 99 ip 192.168.99.1
+ standby 99 priority 110
+ standby 99 preempt
+```
+
+### Router 2 (R2 - Backup/Standby)
+
+**Subinterfaces with HSRP:**
+```
+interface gigabitethernet 0/0.10
+ encapsulation dot1q 10
+ ip address 192.168.10.3 255.255.255.0
+ standby 10 ip 192.168.10.1
+ standby 10 preempt
+
+interface gigabitethernet 0/0.20
+ encapsulation dot1q 20
+ ip address 192.168.20.3 255.255.255.0
+ standby 20 ip 192.168.20.1
+ standby 20 preempt
+
+interface gigabitethernet 0/0.99
+ encapsulation dot1q 99 native
+ ip address 192.168.99.3 255.255.255.0
+ standby 99 ip 192.168.99.1
+ standby 99 preempt
+```
+
+## HSRP Command Breakdown
+
+**`standby 10 ip 192.168.10.1`**
+- Creates HSRP group 10
+- Virtual IP is 192.168.10.1 (what end devices use as gateway)
+- Both routers share this same virtual IP
+
+**`standby 10 priority 110`**
+- Sets priority to 110 (default is 100)
+- Higher priority = becomes Active router
+- R1 (110) > R2 (100) = R1 is Active
+
+**`standby 10 preempt`**
+- Allows router to take over Active role if it has higher priority
+- Without preempt: once a router is Active, it stays Active even if higher-priority router comes online
+- With preempt: higher-priority router reclaims Active role when it comes back
+
+## HSRP Verification
+
+### Normal Operation (Both Routers Up)
+
+**R1 Status:**
+```
+R1#show standby brief
+Interface   Grp  Pri P State    Active          Standby         Virtual IP
+Gig0/0.10   10   110 P Active   local           192.168.10.3    192.168.10.1
+Gig0/0.20   20   110 P Active   local           192.168.20.3    192.168.20.1
+Gig0/0.99   99   110 P Active   local           192.168.99.3    192.168.99.1
+```
+
+**R2 Status:**
+```
+R2#show standby brief
+Interface   Grp  Pri P State    Active          Standby         Virtual IP
+Gig0/0.10   10   100 P Standby  192.168.10.2    local           192.168.10.1
+Gig0/0.20   20   100 P Standby  192.168.20.2    local           192.168.20.1
+Gig0/0.99   99   100 P Standby  192.168.99.2    local           192.168.99.1
+```
+
+### After R1 Failure (R2 Takes Over)
+
+**R2 Status After Failover:**
+```
+R2#show standby brief
+Interface   Grp  Pri P State    Active          Standby         Virtual IP
+Gig0/0.10   10   100 P Active   local           unknown         192.168.10.1
+Gig0/0.20   20   100 P Active   local           unknown         192.168.20.1
+Gig0/0.99   99   100 P Active   local           unknown         192.168.99.1
+```
+
+**State changed from Standby to Active**
+**Standby shows "unknown" because R1 is down**
+
+### After R1 Recovery (Preemption)
+
+**R1 Reclaims Active Role:**
+```
+R1#show standby brief
+Interface   Grp  Pri P State    Active          Standby         Virtual IP
+Gig0/0.10   10   110 P Active   local           192.168.10.3    192.168.10.1
+Gig0/0.20   20   110 P Active   local           192.168.20.3    192.168.20.1
+Gig0/0.99   99   110 P Active   local           192.168.99.3    192.168.99.1
+```
+
+**R2 Returns to Standby:**
+```
+R2#show standby brief
+Interface   Grp  Pri P State    Active          Standby         Virtual IP
+Gig0/0.10   10   100 P Standby  192.168.10.2    local           192.168.10.1
+Gig0/0.20   20   100 P Standby  192.168.20.2    local           192.168.20.1
+Gig0/0.99   99   100 P Standby  192.168.99.2    local           192.168.99.1
+```
+
+## Failover Testing
+
+### Test 1: Normal Connectivity (Both Routers Up)
+**From PC0 (192.168.10.10):**
+- `ping 192.168.10.1` (HSRP virtual gateway) → SUCCESS
+- `ping 192.168.20.10` (PC2 in VLAN 20) → SUCCESS
+
+**Result:** All traffic flows through R1 (Active router)
+
+### Test 2: Simulated R1 Failure
+**On R1:**
+```
+configure terminal
+interface gigabitethernet 0/0
+shutdown
+```
+
+**From PC0, ping PC2 (192.168.20.10):**
+- Ping 1: Request timed out (failover happening)
+- Ping 2: Request timed out (failover happening)
+- Ping 3: Reply received (R2 now Active)
+- Ping 4: Reply received (R2 handling traffic)
+
+**Failover time: ~2-3 seconds (2 lost pings)**
+
+**Result:** R2 automatically took over, users experienced brief interruption
+
+### Test 3: R1 Recovery and Preemption
+**On R1:**
+```
+configure terminal
+interface gigabitethernet 0/0
+no shutdown
+```
+
+**Wait 10-15 seconds for HSRP negotiation**
+
+**R1 transitions:** Listen → Standby → Active (reclaims role due to higher priority and preempt)
+
+**From PC0, ping PC2:**
+- All pings successful (R1 back as Active)
+
+**Result:** R1 reclaimed Active role, R2 returned to Standby
+
+## Issues Encountered and Solutions
+
+### Issue 1: Router1 Stayed Red/Offline
+**Problem:** Router1 appeared powered off (red) in Packet Tracer and wouldn't respond
+
+**Attempted Solutions:**
+- Reconnected cables multiple times
+- Toggled physical power switch
+- Checked interface configurations
+
+**Root Cause:** Cable was connected to wrong router port (Gig0/1 instead of Gig0/0)
+
+**Solution:** Moved cable from Gig0/1 to Gig0/0 on Router1
+- All subinterfaces configured on Gig0/0.x
+- Cable must be in Gig0/0 for subinterfaces to work
+- Link came up immediately after correction
+
+### Issue 2: Gig0/2 on Switch Showing Down
+**Problem:** Switch port Gig0/2 showed "administratively down" even with cable connected
+
+**Solution:** 
+```
+configure terminal
+interface gigabitethernet 0/2
+no shutdown
+```
+
+**Lesson:** Always verify both sides of a link are enabled (switch port and router interface)
+
+### Issue 3: Router Label Confusion
+**Problem:** Router configurations were initially applied to wrong routers (R1 config on R2, vice versa)
+
+**Solution:** Deleted both routers and started fresh with clear labeling
+- Router0 = R1 (priority 110, Active)
+- Router1 = R2 (priority 100, Standby)
+
+## What Was Accomplished
+
+✓ Dual router topology with redundant trunk links
+✓ HSRP configured on both routers across all VLANs
+✓ Virtual gateway IPs (.1 addresses) shared between routers
+✓ Priority configured (R1: 110, R2: 100) to control Active router
+✓ Preemption enabled for automatic recovery
+✓ Failover tested successfully (~2-3 second downtime)
+✓ Recovery and preemption verified (R1 reclaimed Active role)
+✓ End-to-end connectivity maintained through failover events
+✓ High availability achieved - no single point of failure at gateway layer
+
+## Key Takeaways
+
+**HSRP Fundamentals:**
+- Multiple routers share single virtual IP address
+- One router is Active (handles traffic), others are Standby (ready to take over)
+- Priority determines which router becomes Active (higher = Active)
+- Preemption allows higher-priority router to reclaim Active role
+
+**Failover Behavior:**
+- Detection time: 3 missed hellos (default 3 seconds each = 9 seconds max)
+- Transition time: ~1-3 seconds for Standby to become Active
+- Total downtime: Typically 2-4 seconds in practice
+
+**Configuration Best Practices:**
+- Match HSRP group number to VLAN number (group 10 for VLAN 10)
+- Use priority to control which router is Active (increment by 10)
+- Always enable preempt for predictable failover behavior
+- Virtual IP should be different from both router interface IPs
+- Document which router should be Active in normal operations
+
+**Troubleshooting Lessons:**
+- Verify physical connections first (correct ports!)
+- Check both sides of link are enabled (no shutdown)
+- Use `show standby brief` to see HSRP status at a glance
+- "unknown" in Standby column = peer router is down
+- Listen → Standby → Active is normal transition when router comes online
