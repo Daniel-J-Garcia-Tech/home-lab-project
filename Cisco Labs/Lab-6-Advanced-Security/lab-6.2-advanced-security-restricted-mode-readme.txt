@@ -1,0 +1,184 @@
+# Lab 6 Variation 2: Port Security with RESTRICT Mode
+
+## Objective
+Implement port security using RESTRICT violation mode. Demonstrate how ports can remain operational while blocking unauthorized traffic and logging security violations.
+
+## Lab Requirements
+
+**Security Goals:**
+1. Lock ports to specific MAC addresses
+2. Block unauthorized device traffic while keeping port operational
+3. Log all violation attempts
+4. Maintain service availability during security events
+
+## Topology
+- 1x Cisco 2960 Switch (SW2)
+- 4x PCs (all in same subnet)
+- Simple access layer with alternative violation handling
+
+## Network Configuration
+
+**All devices in VLAN 1 (default):**
+- PC0: 192.168.2.10 → Switch Fa0/1
+- PC1: 192.168.2.11 → Switch Fa0/2
+- PC2: 192.168.2.12 → Switch Fa0/3
+- PC3: 192.168.2.13 → Switch Fa0/4
+
+## Port Security Configuration
+
+### Violation Mode: RESTRICT
+
+```
+interface range fastethernet 0/1-4
+ switchport mode access
+ switchport port-security
+ switchport port-security maximum 1
+ switchport port-security mac-address sticky
+ switchport port-security violation restrict
+```
+
+**Key difference from Lab 6 original:**
+- `switchport port-security violation restrict` instead of `shutdown`
+
+### Learned MAC Addresses
+
+```
+SW2#show port-security address
+
+Secure Mac Address Table
+-----------------------------------------------------------------------------
+Vlan    Mac Address       Type            Ports      Remaining Age (mins)
+----    -----------       ----            -----      --------------------
+1       000C.CFD2.BDBA    SecureSticky    Fa0/1      -
+1       0060.5C9A.011B    SecureSticky    Fa0/2      -
+1       0002.177E.6331    SecureSticky    Fa0/3      -
+1       00D0.9708.7590    SecureSticky    Fa0/4      -
+```
+
+## RESTRICT Mode Behavior
+
+### Normal Operation
+
+```
+SW2#show port-security
+
+Secure Port  MaxSecureAddr  CurrentAddr  SecurityViolation  Security Action
+             (Count)        (Count)      (Count)
+------------------------------------------------------------------------
+Fa0/1        1              1            0                  Restrict
+Fa0/2        1              1            0                  Restrict
+Fa0/3        1              1            0                  Restrict
+Fa0/4        1              1            0                  Restrict
+```
+
+**All ports secured with RESTRICT mode enabled**
+
+### Security Violation Test
+
+**Action taken:**
+- Disconnected PC0 from Fa0/1
+- Connected PC1 to Fa0/1 (port locked to PC0's MAC)
+- Attempted to ping from PC1
+
+**Expected behavior:**
+- Fa0/1 expects MAC 000C.CFD2.BDBA (PC0)
+- Fa0/1 receives MAC 0060.5C9A.011B (PC1)
+- **VIOLATION DETECTED**
+
+**Switch response (RESTRICT mode):**
+```
+%PORT_SECURITY-2-PSECURE_VIOLATION: Security violation occurred, caused by MAC address 0060.5C9A.011B on port FastEthernet0/1.
+%PORT_SECURITY-2-PSECURE_VIOLATION: Security violation occurred, caused by MAC address 0060.5C9A.011B on port FastEthernet0/1.
+%PORT_SECURITY-2-PSECURE_VIOLATION: Security violation occurred, caused by MAC address 0060.5C9A.011B on port FastEthernet0/1.
+%PORT_SECURITY-2-PSECURE_VIOLATION: Security violation occurred, caused by MAC address 0060.5C9A.011B on port FastEthernet0/1.
+```
+
+**Multiple violation messages logged (one per ping attempt)**
+
+### Port Status After Violation
+
+```
+SW2#show port-security interface fastethernet 0/1
+
+Port Security              : Enabled
+Port Status                : Secure-up
+Violation Mode             : Restrict
+Maximum MAC Addresses      : 1
+Total MAC Addresses        : 1
+Sticky MAC Addresses       : 1
+Last Source Address:Vlan   : 0060.5C9A.011B:1
+Security Violation Count   : 4
+```
+
+**Critical observations:**
+- **Port Status: Secure-up** (port still operational!)
+- **Violation Mode: Restrict**
+- **Security Violation Count: 4** (incremented for each violation)
+- **Last Source Address: 0060.5C9A.011B** (violator's MAC logged)
+
+```
+SW2#show port-security
+
+Secure Port  MaxSecureAddr  CurrentAddr  SecurityViolation  Security Action
+             (Count)        (Count)      (Count)
+------------------------------------------------------------------------
+Fa0/1        1              1            4                  Restrict
+Fa0/2        1              1            0                  Restrict
+Fa0/3        1              1            0                  Restrict
+Fa0/4        1              1            0                  Restrict
+```
+
+**Violation count visible in summary view**
+
+## What Was Accomplished
+
+✓ Port security configured with RESTRICT violation mode
+✓ Sticky MAC learning enabled on all ports
+✓ Security violation tested (unauthorized device connected)
+✓ Port remained operational during violation (Secure-up state)
+✓ Violations logged and counted (4 violations from ping attempts)
+✓ Demonstrated difference between SHUTDOWN and RESTRICT modes
+✓ No manual port recovery required
+
+## Key Takeaways
+
+### RESTRICT Mode Characteristics
+
+**Advantages:**
+- Port stays operational (no err-disabled state)
+- Legitimate traffic continues if authorized device present
+- No manual intervention required
+- Violations still logged and counted
+- Reduces help desk calls
+
+**Disadvantages:**
+- Less secure than SHUTDOWN mode
+- Violator knows they're blocked (repeated violation messages)
+- Requires active log monitoring
+- May not be suitable for high-security environments
+
+### When Violations Occur
+
+**RESTRICT mode drops packets from:**
+- Unauthorized MAC addresses
+- MAC addresses beyond the configured maximum
+
+**RESTRICT mode allows packets from:**
+- Authorized sticky MAC addresses
+- Manually configured MAC addresses
+- Any MAC if under the maximum count
+
+### Violation Counter
+
+**Increments for:**
+- Each packet from unauthorized MAC address
+- In this test: 4 pings = 4 violations
+- Counter never resets automatically
+- Can be cleared with: `clear port-security violation`
+
+### Logging Behavior
+
+**Each violation generates syslog message:**
+```
+%PORT_SECURITY-2-PSECURE_VIOLATION: Security violation occurred, caused by MAC address [MAC] on port [interface].
+```

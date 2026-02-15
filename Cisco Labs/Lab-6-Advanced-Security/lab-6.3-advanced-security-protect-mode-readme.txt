@@ -1,0 +1,252 @@
+# Lab 6 Variation 3: Port Security with PROTECT Mode
+
+## Objective
+Implement port security using PROTECT violation mode. Demonstrate silent traffic filtering without logging or alerting on security violations.
+
+## Lab Requirements
+
+**Security Goals:**
+1. Block unauthorized MAC addresses silently
+2. Keep port operational during violations
+3. No logging or alerting overhead
+4. Minimal administrative intervention
+
+## Topology
+- 1x Cisco 2960 Switch (SW3)
+- 4x PCs (all in same subnet)
+- Simple access layer with silent violation handling
+
+## Network Configuration
+
+**All devices in VLAN 1 (default):**
+- PC0: 192.168.3.10 → Switch Fa0/1
+- PC1: 192.168.3.11 → Switch Fa0/2
+- PC2: 192.168.3.12 → Switch Fa0/3
+- PC3: 192.168.3.13 → Switch Fa0/4
+
+## Port Security Configuration
+
+### Violation Mode: PROTECT
+
+```
+interface range fastethernet 0/1-4
+ switchport mode access
+ switchport port-security
+ switchport port-security maximum 1
+ switchport port-security mac-address sticky
+ switchport port-security violation protect
+```
+
+**Key difference from previous variations:**
+- `switchport port-security violation protect` (silent drop mode)
+
+### Learned MAC Addresses
+
+```
+SW3#show port-security address
+
+Secure Mac Address Table
+-----------------------------------------------------------------------------
+Vlan    Mac Address       Type            Ports      Remaining Age (mins)
+----    -----------       ----            -----      --------------------
+1       0090.21EB.74C3    SecureSticky    Fa0/1      -
+1       00D0.FF8B.203E    SecureSticky    Fa0/2      -
+1       0030.A3EE.75E0    SecureSticky    Fa0/3      -
+1       00E0.B01C.C81B    SecureSticky    Fa0/4      -
+```
+
+## PROTECT Mode Behavior
+
+### Normal Operation
+
+```
+SW3#show port-security
+
+Secure Port  MaxSecureAddr  CurrentAddr  SecurityViolation  Security Action
+             (Count)        (Count)      (Count)
+------------------------------------------------------------------------
+Fa0/1        1              1            0                  Protect
+Fa0/2        1              1            0                  Protect
+Fa0/3        1              1            0                  Protect
+Fa0/4        1              1            0                  Protect
+```
+
+**All ports secured with PROTECT mode enabled**
+
+### Security Violation Test
+
+**Action taken:**
+- Disconnected PC0 from Fa0/1
+- Connected PC1 to Fa0/1 (port locked to PC0's MAC)
+- Attempted to ping from PC1
+
+**Expected behavior:**
+- Fa0/1 expects MAC 0090.21EB.74C3 (PC0)
+- Fa0/1 receives MAC 00D0.FF8B.203E (PC1)
+- **VIOLATION OCCURS**
+
+**Switch response (PROTECT mode):**
+- **NO violation messages** (silent operation)
+- Traffic silently dropped
+- Port remains operational
+
+### Port Status After Violation
+
+```
+SW3#show port-security interface fastethernet 0/1
+
+Port Security              : Enabled
+Port Status                : Secure-up
+Violation Mode             : Protect
+Maximum MAC Addresses      : 1
+Total MAC Addresses        : 1
+Sticky MAC Addresses       : 1
+Last Source Address:Vlan   : 0090.21EB.74C3:1
+Security Violation Count   : 0
+```
+
+**Critical observations:**
+- **Port Status: Secure-up** (port operational)
+- **Violation Mode: Protect**
+- **Security Violation Count: 0** (NOT incremented - silent!)
+- **NO logging messages** (completely silent operation)
+
+```
+SW3#show port-security
+
+Secure Port  MaxSecureAddr  CurrentAddr  SecurityViolation  Security Action
+             (Count)        (Count)      (Count)
+------------------------------------------------------------------------
+Fa0/1        1              1            0                  Protect
+Fa0/2        1              1            0                  Protect
+Fa0/3        1              1            0                  Protect
+Fa0/4        1              1            0                  Protect
+```
+
+**Violation count remains 0 across all ports**
+
+## Three Violation Modes Compared
+
+### Complete Comparison
+
+| Feature | SHUTDOWN | RESTRICT | PROTECT |
+|---------|----------|----------|---------|
+| Port stays operational | ✗ (err-disabled) | ✓ (Secure-up) | ✓ (Secure-up) |
+| Violating traffic dropped | ✓ | ✓ | ✓ |
+| Authorized traffic continues | ✗ | ✓ | ✓ |
+| Violation logged | ✓ | ✓ | ✗ |
+| Counter incremented | ✓ | ✓ | ✗ |
+| Syslog messages | ✓ | ✓ | ✗ |
+| SNMP traps | ✓ | ✓ | ✗ |
+| Requires manual recovery | ✓ | ✗ | ✗ |
+| Auto-recovery when auth device reconnects | ✗ | ✓ | ✓ |
+| Administrative overhead | High | Medium | Low |
+| Security level | Maximum | Medium | Minimum |
+| Visibility | Maximum | Medium | None |
+
+### Behavioral Flow Comparison
+
+**SHUTDOWN Mode:**
+```
+Unauthorized MAC detected
+    ↓
+Port → err-disabled
+    ↓
+ALL traffic stops (auth + unauth)
+    ↓
+Syslog message + counter increment
+    ↓
+Admin must manually recover (shutdown/no shutdown)
+    ↓
+Port operational again
+```
+
+**RESTRICT Mode:**
+```
+Unauthorized MAC detected
+    ↓
+Port stays Secure-up
+    ↓
+Only violating traffic dropped
+    ↓
+Authorized traffic continues
+    ↓
+Syslog message + counter increment
+    ↓
+Admin investigates logs
+    ↓
+Auto-recovers when auth device reconnects
+```
+
+**PROTECT Mode:**
+```
+Unauthorized MAC detected
+    ↓
+Port stays Secure-up
+    ↓
+Only violating traffic dropped (silent)
+    ↓
+Authorized traffic continues
+    ↓
+NO syslog, NO counter increment
+    ↓
+No admin notification
+    ↓
+Auto-recovers when auth device reconnects
+```
+
+## What Was Accomplished
+
+✓ Port security configured with PROTECT violation mode
+✓ Sticky MAC learning enabled on all ports
+✓ Security violation tested (unauthorized device connected)
+✓ Port remained operational during violation
+✓ **NO violation logging** (silent operation verified)
+✓ **NO counter increment** (violation count stayed 0)
+✓ Demonstrated complete silence of PROTECT mode
+✓ Compared all three violation modes
+
+### Decision Matrix
+
+**Use SHUTDOWN when:**
+- Maximum security required ✓
+- Every violation must be investigated ✓
+- Audit trail required ✓
+- Examples: Executive offices, server rooms, data centers
+
+**Use RESTRICT when:**
+- Need security with operational flexibility ✓
+- Want logging but can't afford downtime ✓
+- Violations should be monitored but not critical ✓
+- Examples: Conference rooms, shared workspaces, training labs
+
+**Use PROTECT when:**
+- Basic MAC filtering sufficient ✓
+- High-volume environment (logging overhead concern) ✓
+- Low security requirements ✓
+- Public-facing infrastructure ✓
+- Examples: Guest WiFi APs, public kiosks, library computers
+
+## Key Takeaways
+
+### PROTECT Mode Characteristics
+
+**Silent Operation:**
+- No syslog messages generated
+- No SNMP traps sent
+- No counters incremented
+- Completely invisible to monitoring systems
+
+**When Violations Occur:**
+- Traffic silently dropped at Layer 2
+- No notification to anyone
+- Port continues operating normally
+- Authorized devices unaffected
+
+**Monitoring Challenges:**
+- Can't detect violations through logs
+- Must check violation counter manually (always shows 0)
+- No real-time alerting possible
+- Forensic investigation impossible
+
+**Key observation: Even when violations occur, all counters remain 0**

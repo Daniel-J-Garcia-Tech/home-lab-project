@@ -1,5 +1,8 @@
 # Active Directory Homelab Project
 
+**Note**
+I've also added a Cisco Labs folder that includes a 7 step lab process with Cisco Packet Tracer. Each lab build on skills to eventually reach the final Lab 7 Capstone Project. For more detailed explaining please view README in that folder
+
 **Overview**
 A fully functional Active Directory deomain environment built for learning enterprise
 

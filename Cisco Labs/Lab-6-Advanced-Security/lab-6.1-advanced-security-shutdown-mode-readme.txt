@@ -1,0 +1,249 @@
+# Lab 6: Port Security
+
+## Objective
+Implement port security to restrict network access based on MAC addresses. Prevent unauthorized devices from connecting to the network by locking switch ports to specific approved devices.
+
+## Lab Requirements
+
+**Security Goals:**
+1. Lock each switch port to a specific MAC address
+2. Automatically learn and save MAC addresses (sticky learning)
+3. Shut down port if unauthorized device is connected
+4. Provide secure access control at Layer 2
+
+## Topology
+- 1x Cisco 2960 Switch (SW1)
+- 4x PCs (all in same subnet, no VLANs)
+- Simple access layer security demonstration
+
+## Network Configuration
+
+**All devices in VLAN 1 (default):**
+- PC0: 192.168.1.10 → Switch Fa0/1
+- PC1: 192.168.1.11 → Switch Fa0/2
+- PC2: 192.168.1.12 → Switch Fa0/3
+- PC3: 192.168.1.13 → Switch Fa0/4
+
+**No gateway configured (all same subnet, Layer 2 communication only)**
+
+## Port Security Configuration
+
+### Initial MAC Address Discovery
+
+**Before configuring port security, identify connected devices:**
+```
+SW1#show mac address-table
+
+Vlan    Mac Address       Type        Ports
+----    -----------       --------    -----
+   1    0050.0F03.CA84    DYNAMIC     Fa0/1
+   1    00E0.B045.9CD4    DYNAMIC     Fa0/2
+   1    0090.2BA1.5048    DYNAMIC     Fa0/3
+   1    0004.9A27.4608    DYNAMIC     Fa0/4
+```
+
+**Each PC has unique MAC address learned dynamically by switch.**
+
+### Port Security Commands (Applied to All Ports)
+
+```
+interface range fastethernet 0/1-4
+ switchport mode access
+ switchport port-security
+ switchport port-security maximum 1
+ switchport port-security mac-address sticky
+ switchport port-security violation shutdown
+```
+
+**Command Breakdown:**
+
+**`switchport mode access`**
+- Sets port as access port (required for port security)
+- Access ports connect to end devices (PCs, phones, printers)
+
+**`switchport port-security`**
+- Enables port security feature on the interface
+- Port now enforces MAC address restrictions
+
+**`switchport port-security maximum 1`**
+- Allows only 1 MAC address per port
+- Can be increased for ports connecting multiple devices (e.g., IP phone + PC)
+
+**`switchport port-security mac-address sticky`**
+- Automatically learns and saves the first MAC address seen
+- MAC address added to running-config
+- Becomes permanent when config is saved
+- Alternative: Manually specify MAC with `mac-address [MAC]`
+
+**`switchport port-security violation shutdown`**
+- If wrong MAC detected, port goes to err-disabled state
+- Port shuts down completely
+- Requires manual recovery (shutdown/no shutdown)
+- Most secure violation mode
+
+## Port Security Verification
+
+### Check Port Security Status
+
+```
+SW1#show port-security
+
+Secure Port  MaxSecureAddr  CurrentAddr  SecurityViolation  Security Action
+             (Count)        (Count)      (Count)
+------------------------------------------------------------------------
+Fa0/1        1              1            0                  Shutdown
+Fa0/2        1              1            0                  Shutdown
+Fa0/3        1              1            0                  Shutdown
+Fa0/4        1              1            0                  Shutdown
+```
+
+**Shows:**
+- Which ports have port security enabled
+- How many MACs are allowed vs currently learned
+- Violation count (0 = no violations yet)
+- Action taken on violation (Shutdown)
+
+### Check Learned MAC Addresses
+
+```
+SW1#show port-security address
+
+Secure Mac Address Table
+-----------------------------------------------------------------------------
+Vlan    Mac Address       Type            Ports      Remaining Age (mins)
+----    -----------       ----            -----      --------------------
+1       0050.0F03.CA84    SecureSticky    Fa0/1      -
+1       00E0.B045.9CD4    SecureSticky    Fa0/2      -
+1       0090.2BA1.5048    SecureSticky    Fa0/3      -
+1       0004.9A27.4608    SecureSticky    Fa0/4      -
+```
+
+**Shows:**
+- MAC addresses learned and secured
+- Type: SecureSticky (automatically learned and saved)
+- Which port each MAC is locked to
+
+### Check Individual Port Details
+
+```
+SW1#show port-security interface fastethernet 0/1
+
+Port Security              : Enabled
+Port Status                : Secure-up
+Violation Mode             : Shutdown
+Maximum MAC Addresses      : 1
+Total MAC Addresses        : 1
+Configured MAC Addresses   : 0
+Sticky MAC Addresses       : 1
+Last Source Address:Vlan   : 0050.0F03.CA84:1
+Security Violation Count   : 0
+```
+
+**Port Status States:**
+- **Secure-up:** Port is secured and operational
+- **Secure-down:** Port is secured but link is down
+- **Secure-shutdown:** Port shut down due to violation (err-disabled)
+
+## Security Violation Testing
+
+### Test 1: Swap Devices Between Ports
+
+**Action taken:**
+- Disconnected PC1 from Fa0/2
+- Connected PC1 to Fa0/1 (port locked to PC0's MAC)
+
+**Expected result:**
+- Fa0/1 expects MAC 0050.0F03.CA84 (PC0)
+- Fa0/1 receives MAC 00E0.B045.9CD4 (PC1)
+- **VIOLATION DETECTED**
+
+**Switch response:**
+```
+%PM-4-ERR_DISABLE: psecure-violation error detected on Fa0/1, putting Fa0/1 in err-disable state.
+%PORT_SECURITY-2-PSECURE_VIOLATION: Security violation occurred, caused by MAC address 00E0.B045.9CD4 on port FastEthernet0/1.
+```
+
+**Port immediately shut down (err-disabled state)**
+
+### Verification After Violation
+
+```
+SW1#show port-security
+
+Secure Port  MaxSecureAddr  CurrentAddr  SecurityViolation  Security Action
+             (Count)        (Count)      (Count)
+------------------------------------------------------------------------
+Fa0/1        1              1            1                  Shutdown
+```
+
+**Security Violation Count incremented to 1**
+
+```
+SW1#show interfaces fastethernet 0/1 status
+
+Port      Name               Status       Vlan       Duplex  Speed Type
+Fa0/1                        err-disabled 1          auto    auto  10/100BaseTX
+```
+
+**Port status: err-disabled (shutdown due to security violation)**
+
+### Recovery from err-disabled State
+
+**Steps to recover:**
+1. Reconnect authorized device (PC0) to Fa0/1
+2. Manually re-enable the port:
+
+```
+configure terminal
+interface fastethernet 0/1
+ shutdown
+ no shutdown
+exit
+```
+
+**Port returns to Secure-up state and resumes normal operation.**
+
+## What Was Accomplished
+
+✓ Port security enabled on all access ports
+✓ Sticky MAC address learning configured
+✓ Each port locked to specific approved device
+✓ Violation mode set to shutdown (maximum security)
+✓ Security violation tested and verified
+✓ Port recovered from err-disabled state
+✓ All 4 ports secured with unique MAC addresses
+✓ Understanding of different violation modes
+
+## Key Takeaways
+
+**Port Security Fundamentals:**
+- Restricts port access based on MAC addresses
+- Three learning methods: sticky (auto-learn), static (manual config), dynamic (learned but not saved)
+- Sticky is most common (automatic and persistent)
+- Must be configured on access ports only (not trunks)
+
+**Sticky MAC Addresses:**
+- First MAC address seen is learned automatically
+- Saved to running-config
+- Becomes permanent when config saved to startup-config
+- Can be cleared with `clear port-security sticky`
+
+**err-disabled State:**
+- Port completely shut down due to error condition
+- Requires manual intervention to recover
+- Shows as "err-disabled" in interface status
+- Recovery: shutdown → no shutdown on the interface
+
+**Configuration Best Practices:**
+- Use `interface range` for bulk configuration
+- Set appropriate maximum (1 for workstations, 2-3 for phones + PCs)
+- Choose violation mode based on security requirements
+- Document approved MAC addresses
+- Monitor violation counters regularly
+
+**Troubleshooting:**
+- `show port-security` - summary of all secured ports
+- `show port-security interface [interface]` - detailed port info
+- `show port-security address` - all learned MACs
+- `show interfaces status err-disabled` - find err-disabled ports
+- Generate traffic after enabling port security to trigger MAC learning

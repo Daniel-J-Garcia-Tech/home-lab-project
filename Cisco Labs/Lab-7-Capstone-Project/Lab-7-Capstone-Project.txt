@@ -1,0 +1,1282 @@
+# CAPSTONE PROJECT: Air-Gapped Government Network
+## Enterprise-Grade Network Infrastructure with Defense-in-Depth Security
+
+---
+
+## Executive Summary
+
+This capstone project demonstrates the design, implementation, and configuration of a production-ready air-gapped government network infrastructure. The network implements enterprise security best practices including network segmentation, access control lists, port security, redundancy mechanisms, and defense-in-depth architecture suitable for classified government systems.
+
+**Devices:** 21 total (5 switches, 2 routers, 14 endpoints)
+**Configuration:** 800+ lines of Cisco IOS commands
+**Duration:** Full implementation and testing
+**Environment:** Cisco Packet Tracer (with noted limitations)
+
+---
+
+## Table of Contents
+
+1. [Project Objectives](#project-objectives)
+2. [Network Requirements](#network-requirements)
+3. [Topology Overview](#topology-overview)
+4. [IP Addressing Scheme](#ip-addressing-scheme)
+5. [VLAN Design](#vlan-design)
+6. [Device Configurations](#device-configurations)
+7. [Security Implementation](#security-implementation)
+8. [Testing & Verification](#testing--verification)
+9. [Challenges & Solutions](#challenges--solutions)
+10. [Packet Tracer Limitations](#packet-tracer-limitations)
+12. [Skills Demonstrated](#skills-demonstrated)
+13. [Conclusion](#conclusion)
+
+---
+
+## Project Objectives
+
+### Primary Goals
+
+1. **Network Segmentation:** Isolate different security zones using VLANs
+2. **Access Control:** Implement granular security policies using ACLs
+3. **Port Security:** Prevent unauthorized device connections
+4. **High Availability:** Configure redundant routing (HSRP)
+5. **Spanning Tree:** Prevent Layer 2 loops in redundant topology
+6. **Defense-in-Depth:** Multiple layers of security controls
+
+### Success Criteria
+
+- ✅ Complete network connectivity within security policy
+- ✅ ACLs enforcing proper traffic flow restrictions
+- ✅ Port security preventing rogue device connections
+- ✅ All VLANs properly segmented and functional
+- ✅ Spanning Tree preventing loops (DIST-SW1 as root bridge)
+- ✅ Documentation suitable for production deployment
+
+---
+
+## Network Requirements
+
+### Security Zones (VLANs)
+
+**VLAN 10 - THIN_CLIENTS (192.168.10.0/24)**
+- User workstations (thin clients)
+- 4 devices
+- Can access: Servers (VLAN 20), Management (VLAN 99)
+- Cannot access: Database directly, Classified, Guest
+- Port security: Shutdown mode
+
+**VLAN 20 - SERVERS (192.168.20.0/24)**
+- Application servers, file servers
+- 4 devices
+- Can access: Database (VLAN 40), Management (VLAN 99)
+- Cannot initiate to: Thin clients
+- Port security: Shutdown mode
+
+**VLAN 30 - CLASSIFIED (192.168.30.0/24)**
+- Top secret systems
+- 2 devices
+- **Completely isolated** except management
+- Cannot access: Any other VLAN
+- Port security: Shutdown mode
+
+**VLAN 40 - DATABASE (192.168.40.0/24)**
+- Database servers (SQL, Oracle)
+- 2 devices
+- Can be accessed by: Servers, Management
+- Cannot be accessed by: Thin clients (direct), Classified, Guest
+- Cannot initiate to: Any VLAN
+- Port security: Shutdown mode
+
+**VLAN 50 - GUEST_NETWORK (192.168.50.0/24)**
+- Visitor laptops, contractors
+- 2 devices
+- **Completely isolated** from all internal VLANs
+- Port security: Restrict mode (operational flexibility)
+
+**VLAN 99 - MANAGEMENT (192.168.99.0/24)**
+- Network infrastructure management
+- Switch management IPs
+- Full access to all VLANs
+- No end-user devices
+
+### Infrastructure Requirements
+
+- **Access Layer:** 3 switches (departmental/functional separation)
+- **Distribution Layer:** 2 switches (aggregation and redundancy)
+- **Core/Routing:** 2 routers (HSRP for gateway redundancy)
+- **Redundant Paths:** Multiple trunk links for failover
+- **Spanning Tree:** Root bridge election and loop prevention
+
+---
+
+## Topology Overview
+
+```
+                    CAPSTONE NETWORK TOPOLOGY
+                    =========================
+
+ACCESS LAYER:
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│ ACCESS-SW1  │  │ ACCESS-SW2  │  │ ACCESS-SW3  │
+│ VLAN 10/20  │  │ VLAN 30/40  │  │  VLAN 50    │
+│  8 Ports    │  │  4 Ports    │  │  2 Ports    │
+└──────┬──────┘  └──────┬──────┘  └──────┬──────┘
+       │  ╲             │  ╲             │  ╲
+       │   ╲            │   ╲            │   ╲
+       │    ╲           │    ╲           │    ╲
+       │     ╲          │     ╲          │     ╲
+
+DISTRIBUTION LAYER:
+       │      ╲         │      ╲         │      ╲
+┌──────▼───────▼────────▼───────▼────────▼───────▼──┐
+│              DIST-SW1 (Root Bridge)                │
+│           Priority 4096, STP Master                │
+└────────────────────┬───────────────────────────────┘
+                     │
+              ┌──────┴──────┐
+              │             │
+┌─────────────▼──┐    ┌─────▼────────────┐
+│   DIST-SW2     │◄───┤  Inter-switch    │
+│ Priority 8192  │    │  Trunk Links     │
+└────────┬───────┘    └──────────────────┘
+         │
+
+CORE/ROUTING LAYER:
+         │
+    ┌────▼────┐
+    │   R1    │  (Priority 200 - HSRP Active - Not functional in PT)
+    │ Active  │
+    └─────────┘
+
+    ┌─────────┐
+    │   R2    │  (Priority 100 - HSRP Standby - Not functional in PT)
+    │Standby  │
+    └─────────┘
+    (Powered off for testing - HSRP limitations)
+
+ENDPOINTS:
+PC0-PC3: Thin Clients (VLAN 10)
+PC4-PC7: Servers (VLAN 20)
+PC8-PC9: Classified Systems (VLAN 30)
+PC10-PC11: Database Servers (VLAN 40)
+PC12-PC13: Guest Network (VLAN 50)
+```
+
+**Physical Connections:**
+
+**Access → Distribution:**
+- ACCESS-SW1: Dual uplinks to DIST-SW1 (Gig0/1, Fa0/24) and DIST-SW2 (Gig0/2, Fa0/23)
+- ACCESS-SW2: Dual uplinks to DIST-SW1 (Gig0/1, Fa0/24) and DIST-SW2 (Gig0/2, Fa0/23)
+- ACCESS-SW3: Dual uplinks to DIST-SW1 (Gig0/1, Fa0/24) and DIST-SW2 (Gig0/2, Fa0/23)
+
+**Distribution ↔ Distribution:**
+- DIST-SW1 Fa0/21-22 ↔ DIST-SW2 Fa0/21-22 (Inter-distribution trunks)
+
+**Distribution → Routers:**
+- DIST-SW1 Fa0/23 → R1 Gig0/0 (Primary path)
+- DIST-SW2 Fa0/23 → R2 Gig0/0 (Standby - powered off for testing)
+
+---
+
+## IP Addressing Scheme
+
+| VLAN | Network          | Gateway (HSRP Virtual) | R1 Interface | R2 Interface | Purpose          |
+|------|------------------|------------------------|--------------|--------------|------------------|
+| 10   | 192.168.10.0/24  | 192.168.10.1          | 192.168.10.2 | 192.168.10.3 | Thin Clients     |
+| 20   | 192.168.20.0/24  | 192.168.20.1          | 192.168.20.2 | 192.168.20.3 | Servers          |
+| 30   | 192.168.30.0/24  | 192.168.30.1          | 192.168.30.2 | 192.168.30.3 | Classified       |
+| 40   | 192.168.40.0/24  | 192.168.40.1          | 192.168.40.2 | 192.168.40.3 | Database         |
+| 50   | 192.168.50.0/24  | 192.168.50.1          | 192.168.50.2 | 192.168.50.3 | Guest Network    |
+| 99   | 192.168.99.0/24  | 192.168.99.1          | 192.168.99.2 | 192.168.99.3 | Management       |
+
+### Host IP Assignments
+
+**VLAN 10 - Thin Clients:**
+- PC0: 192.168.10.10
+- PC1: 192.168.10.11
+- PC2: 192.168.10.12
+- PC3: 192.168.10.13
+
+**VLAN 20 - Servers:**
+- PC4: 192.168.20.10
+- PC5: 192.168.20.11
+- PC6: 192.168.20.12
+- PC7: 192.168.20.13
+
+**VLAN 30 - Classified:**
+- PC8: 192.168.30.10
+- PC9: 192.168.30.11
+
+**VLAN 40 - Database:**
+- PC10: 192.168.40.10
+- PC11: 192.168.40.11
+
+**VLAN 50 - Guest:**
+- PC12: 192.168.50.10
+- PC13: 192.168.50.11
+
+**VLAN 99 - Management:**
+- ACCESS-SW1: 192.168.99.11
+- ACCESS-SW2: 192.168.99.12
+- ACCESS-SW3: 192.168.99.13
+- DIST-SW1: 192.168.99.21
+- DIST-SW2: 192.168.99.22
+
+---
+
+## VLAN Design
+
+### VLAN Configuration Table
+
+| VLAN ID | Name            | Purpose                      | Security Level | Port Security Mode |
+|---------|-----------------|------------------------------|----------------|--------------------|
+| 10      | THIN_CLIENTS    | User workstations            | Medium         | Shutdown           |
+| 20      | SERVERS         | Application/file servers     | Medium-High    | Shutdown           |
+| 30      | CLASSIFIED      | Top secret systems           | Maximum        | Shutdown           |
+| 40      | DATABASE        | Database servers             | High           | Shutdown           |
+| 50      | GUEST_NETWORK   | Visitor access               | Isolated       | Restrict           |
+| 99      | MANAGEMENT      | Infrastructure management    | High           | N/A                |
+
+### VLAN Trunking
+
+**All trunks configured with:**
+- Protocol: 802.1Q
+- Native VLAN: 99 (Management)
+- Allowed VLANs: Per switch function (only necessary VLANs)
+
+**Access-to-Distribution Trunks:**
+- ACCESS-SW1 → DIST-SW1/2: VLANs 10, 20, 99
+- ACCESS-SW2 → DIST-SW1/2: VLANs 30, 40, 99
+- ACCESS-SW3 → DIST-SW1/2: VLANs 50, 99
+
+**Distribution-to-Distribution Trunks:**
+- DIST-SW1 ↔ DIST-SW2: VLANs 10, 20, 30, 40, 50, 99
+
+**Distribution-to-Router Trunks:**
+- DIST-SW1 → R1: VLANs 10, 20, 30, 40, 50, 99
+- DIST-SW2 → R2: VLANs 10, 20, 30, 40, 50, 99
+
+---
+
+## Device Configurations
+
+### Access Switches (ACCESS-SW1, ACCESS-SW2, ACCESS-SW3)
+
+**Common Configuration Elements:**
+
+```cisco
+! Hostname and Security
+hostname ACCESS-SWx
+enable secret Cisco123!
+service password-encryption
+
+! Console Access
+line console 0
+ password Console123
+ login
+ exec-timeout 10 0
+ logging synchronous
+
+! VTY Access
+line vty 0 15
+ password VTY123
+ login
+ exec-timeout 10 0
+
+! Disable VLAN 1
+interface vlan 1
+ no ip address
+ shutdown
+
+! Management VLAN
+interface vlan 99
+ ip address 192.168.99.1x 255.255.255.0
+ no shutdown
+
+ip default-gateway 192.168.99.1
+
+! Port Security on Access Ports
+interface range faX/X-X
+ switchport mode access
+ switchport access vlan XX
+ switchport port-security
+ switchport port-security maximum 1
+ switchport port-security mac-address sticky
+ switchport port-security violation shutdown
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+
+! Trunk Configuration
+interface gigabitethernet 0/1
+ switchport mode trunk
+ switchport trunk allowed vlan XX,XX,99
+ switchport trunk native vlan 99
+ no shutdown
+```
+
+**ACCESS-SW1 Specifics:**
+- VLANs: 10 (THIN_CLIENTS), 20 (SERVERS), 99 (MANAGEMENT)
+- Ports Fa0/1-4: VLAN 10
+- Ports Fa0/5-8: VLAN 20
+- Management IP: 192.168.99.11
+
+**ACCESS-SW2 Specifics:**
+- VLANs: 30 (CLASSIFIED), 40 (DATABASE), 99 (MANAGEMENT)
+- Ports Fa0/1-2: VLAN 30
+- Ports Fa0/3-4: VLAN 40
+- Management IP: 192.168.99.12
+
+**ACCESS-SW3 Specifics:**
+- VLANs: 50 (GUEST_NETWORK), 99 (MANAGEMENT)
+- Ports Fa0/1-2: VLAN 50
+- Port security mode: **RESTRICT** (not shutdown - operational flexibility)
+- Maximum MACs: 3 per port
+- Management IP: 192.168.99.13
+
+### Distribution Switches (DIST-SW1, DIST-SW2)
+
+**Common Configuration Elements:**
+
+```cisco
+! Hostname and Security
+hostname DIST-SWx
+enable secret Cisco123!
+service password-encryption
+
+! All VLANs defined
+vlan 10
+ name THIN_CLIENTS
+vlan 20
+ name SERVERS
+vlan 30
+ name CLASSIFIED
+vlan 40
+ name DATABASE
+vlan 50
+ name GUEST_NETWORK
+vlan 99
+ name MANAGEMENT
+
+! Management VLAN
+interface vlan 99
+ ip address 192.168.99.2x 255.255.255.0
+ no shutdown
+
+ip default-gateway 192.168.99.1
+
+! Trunk Configuration (to access switches)
+interface fastethernet 0/X
+ switchport mode trunk
+ switchport trunk allowed vlan XX,XX,99
+ switchport trunk native vlan 99
+ no shutdown
+
+! Inter-distribution trunk
+interface range fa0/21-22
+ switchport mode trunk
+ switchport trunk allowed vlan 10,20,30,40,50,99
+ switchport trunk native vlan 99
+ no shutdown
+
+! Trunk to router
+interface fa0/23
+ switchport mode trunk
+ switchport trunk allowed vlan 10,20,30,40,50,99
+ switchport trunk native vlan 99
+ no shutdown
+```
+
+**DIST-SW1 Specifics:**
+- **STP Root Bridge (Primary)**
+- `spanning-tree vlan 1-99 priority 4096`
+- Management IP: 192.168.99.21
+- Trunk to R1 (Fa0/23)
+
+**DIST-SW2 Specifics:**
+- **STP Root Bridge (Secondary)**
+- `spanning-tree vlan 1-99 priority 8192`
+- Management IP: 192.168.99.22
+- Trunk to R2 (Fa0/23)
+
+### Routers (R1 - Active, R2 - Standby)
+
+**R1 Configuration:**
+
+```cisco
+hostname R1
+enable secret Cisco123!
+service password-encryption
+
+! Physical Interface
+interface gigabitethernet 0/0
+ no shutdown
+
+! VLAN 10 - Thin Clients
+interface gigabitethernet 0/0.10
+ encapsulation dot1q 10
+ ip address 192.168.10.2 255.255.255.0
+ standby 10 ip 192.168.10.1
+ standby 10 priority 200
+ standby 10 preempt
+ ip access-group PROTECT-THIN-CLIENTS in
+
+! VLAN 20 - Servers
+interface gigabitethernet 0/0.20
+ encapsulation dot1q 20
+ ip address 192.168.20.2 255.255.255.0
+ standby 20 ip 192.168.20.1
+ standby 20 priority 200
+ standby 20 preempt
+ ip access-group PROTECT-SERVERS in
+
+! VLAN 30 - Classified
+interface gigabitethernet 0/0.30
+ encapsulation dot1q 30
+ ip address 192.168.30.2 255.255.255.0
+ standby 30 ip 192.168.30.1
+ standby 30 priority 200
+ standby 30 preempt
+ ip access-group PROTECT-CLASSIFIED in
+
+! VLAN 40 - Database
+interface gigabitethernet 0/0.40
+ encapsulation dot1q 40
+ ip address 192.168.40.2 255.255.255.0
+ standby 40 ip 192.168.40.1
+ standby 40 priority 200
+ standby 40 preempt
+ ip access-group PROTECT-DATABASE in
+
+! VLAN 50 - Guest
+interface gigabitethernet 0/0.50
+ encapsulation dot1q 50
+ ip address 192.168.50.2 255.255.255.0
+ standby 50 ip 192.168.50.1
+ standby 50 priority 200
+ standby 50 preempt
+ ip access-group PROTECT-GUEST in
+
+! VLAN 99 - Management (Native VLAN)
+interface gigabitethernet 0/0.99
+ encapsulation dot1q 99 native
+ ip address 192.168.99.2 255.255.255.0
+ standby 99 ip 192.168.99.1
+ standby 99 priority 200
+ standby 99 preempt
+ ip access-group PROTECT-MANAGEMENT in
+
+ip routing
+```
+
+**R2 Configuration:**
+- Same as R1, except:
+  - IP addresses end in .3 instead of .2
+  - No priority commands (defaults to 100)
+  - Becomes Standby router
+
+---
+
+## Security Implementation
+
+### Access Control Lists (ACLs)
+
+All ACLs are applied **INBOUND** on router subinterfaces (filtering traffic FROM that VLAN before routing).
+
+**Critical Lesson Learned:** ACL direction matters!
+- **INBOUND:** Filters traffic FROM the VLAN (what we want)
+- **OUTBOUND:** Filters traffic TO the VLAN (wrong for our use case)
+
+#### ACL 1: PROTECT-THIN-CLIENTS (Applied to Gig0/0.10 IN)
+
+```cisco
+ip access-list extended PROTECT-THIN-CLIENTS
+ 10 permit ip 192.168.10.0 0.0.0.255 192.168.20.0 0.0.0.255
+ 20 permit ip 192.168.10.0 0.0.0.255 192.168.99.0 0.0.0.255
+ 30 permit tcp any any established
+ 35 permit icmp any 192.168.99.0 0.0.0.255 echo-reply
+ 40 permit icmp any any echo-reply
+ 50 permit ip 192.168.99.0 0.0.0.255 any
+```
+
+**Purpose:** Allow thin clients to access servers and management, block direct database access
+
+**Rules:**
+- Line 10: Thin clients → Servers (allowed)
+- Line 20: Thin clients → Management (allowed)
+- Line 30: Return traffic (TCP established)
+- Line 35: ICMP replies to management
+- Line 40: ICMP replies (general)
+- Line 50: Management full access
+- **Implicit deny:** Blocks thin clients → database, classified, guest
+
+#### ACL 2: PROTECT-SERVERS (Applied to Gig0/0.20 IN)
+
+```cisco
+ip access-list extended PROTECT-SERVERS
+ 5 permit ip 192.168.20.0 0.0.0.255 192.168.20.0 0.0.0.255
+ 10 permit icmp 192.168.20.0 0.0.0.255 any echo-reply
+ 15 permit ip 192.168.20.0 0.0.0.255 192.168.40.0 0.0.0.255
+ 20 permit tcp any any established
+ 30 permit ip 192.168.99.0 0.0.0.255 any
+```
+
+**Purpose:** Allow servers to access databases, prevent servers from initiating to thin clients
+
+**Rules:**
+- Line 5: Server-to-server communication
+- Line 10: ICMP echo-replies (allow ping responses)
+- Line 15: Servers → Database (allowed)
+- Line 20: Return traffic
+- Line 30: Management full access
+- **Implicit deny:** Blocks servers → thin clients (cannot initiate)
+
+#### ACL 3: PROTECT-CLASSIFIED (Applied to Gig0/0.30 IN)
+
+```cisco
+ip access-list extended PROTECT-CLASSIFIED
+ 5 permit ip 192.168.30.0 0.0.0.255 192.168.30.0 0.0.0.255
+ 10 permit icmp 192.168.30.0 0.0.0.255 192.168.99.0 0.0.0.255
+ 20 permit tcp any any established
+ 30 permit ip 192.168.99.0 0.0.0.255 any
+```
+
+**Purpose:** Complete isolation of classified systems
+
+**Rules:**
+- Line 5: Classified-to-classified communication
+- Line 10: Classified → Management only
+- Line 20: Return traffic
+- Line 30: Management full access
+- **Implicit deny:** Blocks ALL other VLANs (complete isolation)
+
+#### ACL 4: PROTECT-DATABASE (Applied to Gig0/0.40 IN)
+
+```cisco
+ip access-list extended PROTECT-DATABASE
+ 5 permit ip 192.168.40.0 0.0.0.255 192.168.40.0 0.0.0.255
+ 10 permit icmp 192.168.40.0 0.0.0.255 192.168.99.0 0.0.0.255
+ 20 permit icmp 192.168.40.0 0.0.0.255 192.168.20.0 0.0.0.255 echo-reply
+ 30 permit tcp any any established
+ 40 permit ip 192.168.99.0 0.0.0.255 any
+```
+
+**Purpose:** Databases can only respond, cannot initiate connections
+
+**Rules:**
+- Line 5: Database-to-database communication
+- Line 10: Database → Management only
+- Line 20: Database can send echo-replies to servers (but not initiate pings)
+- Line 30: Return traffic
+- Line 40: Management full access
+- **Implicit deny:** Blocks database from initiating to ANY VLAN
+
+#### ACL 5: PROTECT-GUEST (Applied to Gig0/0.50 IN)
+
+```cisco
+ip access-list extended PROTECT-GUEST
+ 10 deny ip any 192.168.10.0 0.0.0.255
+ 20 deny ip any 192.168.20.0 0.0.0.255
+ 30 deny ip any 192.168.30.0 0.0.0.255
+ 40 deny ip any 192.168.40.0 0.0.0.255
+ 50 deny ip any 192.168.99.0 0.0.0.255
+ 60 permit icmp 192.168.50.0 0.0.0.255 any
+ 70 permit icmp any 192.168.50.0 0.0.0.255 echo-reply
+ 80 permit tcp any any established
+```
+
+**Purpose:** Complete isolation of guest network from all internal VLANs
+
+**Rules:**
+- Lines 10-50: Explicitly deny ALL internal VLANs
+- Line 60: Allow outbound ICMP
+- Line 70: Allow ICMP replies
+- Line 80: Allow established connections
+- Guests completely isolated from internal network
+
+#### ACL 6: PROTECT-MANAGEMENT (Applied to Gig0/0.99 IN)
+
+```cisco
+ip access-list extended PROTECT-MANAGEMENT
+ 10 permit ip 192.168.99.0 0.0.0.255 any
+```
+
+**Purpose:** Allow management full access to all VLANs
+
+**Rules:**
+- Line 10: Management → Any (full access)
+
+### ACL Policy Matrix
+
+| Source VLAN | Destination VLAN | Allowed? | ACL Rule |
+|-------------|------------------|----------|----------|
+| Thin Clients (10) | Servers (20) | ✅ Yes | PROTECT-THIN-CLIENTS Line 10 |
+| Thin Clients (10) | Database (40) | ❌ No | Implicit Deny |
+| Thin Clients (10) | Classified (30) | ❌ No | Implicit Deny |
+| Thin Clients (10) | Guest (50) | ❌ No | Implicit Deny |
+| Thin Clients (10) | Management (99) | ✅ Yes | PROTECT-THIN-CLIENTS Line 20 |
+| Servers (20) | Thin Clients (10) | ❌ No | Implicit Deny |
+| Servers (20) | Database (40) | ✅ Yes | PROTECT-SERVERS Line 15 |
+| Servers (20) | Classified (30) | ❌ No | Implicit Deny |
+| Servers (20) | Guest (50) | ❌ No | Implicit Deny |
+| Servers (20) | Management (99) | ✅ Yes | Implicit (established) |
+| Database (40) | Any VLAN | ❌ No | Can only respond, not initiate |
+| Classified (30) | Any VLAN | ❌ No | Isolated except Management |
+| Guest (50) | Any Internal VLAN | ❌ No | PROTECT-GUEST Lines 10-50 |
+| Management (99) | Any VLAN | ✅ Yes | PROTECT-MANAGEMENT Line 10 |
+
+### Port Security Configuration
+
+**Purpose:** Prevent unauthorized devices from connecting to the network
+
+**Configuration Per VLAN:**
+
+| VLAN | Violation Mode | Max MACs | Rationale |
+|------|----------------|----------|-----------|
+| 10 (Thin Clients) | Shutdown | 1 | High security, authorized devices only |
+| 20 (Servers) | Shutdown | 1 | Critical infrastructure protection |
+| 30 (Classified) | Shutdown | 1 | Maximum security requirement |
+| 40 (Database) | Shutdown | 1 | Database server protection |
+| 50 (Guest) | **Restrict** | **3** | Operational flexibility for visitors |
+| 99 (Management) | N/A | N/A | Infrastructure ports |
+
+**Violation Modes:**
+
+**Shutdown Mode (VLANs 10, 20, 30, 40):**
+- Port goes to err-disabled state on violation
+- All traffic stopped
+- Manual recovery required (`shutdown` / `no shutdown`)
+- Use case: High-security environments
+
+**Restrict Mode (VLAN 50):**
+- Port stays up
+- Violating traffic dropped
+- Violations logged
+- Use case: Guest networks (operational flexibility)
+
+**Additional Security Features:**
+- **Sticky MAC Learning:** Automatically learns and saves authorized MAC addresses
+- **BPDU Guard:** Shuts down port if spanning tree messages received (prevents rogue switches)
+- **PortFast:** Immediate port activation for end devices (skips STP states)
+
+### Spanning Tree Protocol (STP)
+
+**Purpose:** Prevent Layer 2 loops in redundant topology
+
+**Root Bridge Configuration:**
+
+| Device | Priority | Role | Rationale |
+|--------|----------|------|-----------|
+| DIST-SW1 | 4096 | Primary Root | Lower priority = root bridge |
+| DIST-SW2 | 8192 | Secondary Root | Backup if DIST-SW1 fails |
+| Access Switches | 32768 | Non-root | Default priority |
+
+**Configuration:**
+```cisco
+! DIST-SW1
+spanning-tree vlan 1-99 priority 4096
+
+! DIST-SW2
+spanning-tree vlan 1-99 priority 8192
+```
+
+**Access Port Protection:**
+- **PortFast:** Enabled on all access ports (immediate forwarding)
+- **BPDU Guard:** Enabled on all access ports (shutdown if BPDU received)
+
+### HSRP (Hot Standby Router Protocol)
+
+**Purpose:** Gateway redundancy and automatic failover
+
+**Configuration:**
+- R1: Priority 200 (Active router)
+- R2: Priority 100 (Standby router)
+- Preemption: Enabled (R1 reclaims Active after recovery)
+- Virtual IPs: 192.168.x.1 (one per VLAN)
+
+**Expected Behavior:**
+- R1 handles all traffic (Active)
+- R2 monitors R1 via HSRP hellos
+- If R1 fails: R2 becomes Active (~2-3 seconds failover)
+- When R1 recovers: R1 reclaims Active role (preemption)
+
+**Packet Tracer Limitation:**
+- HSRP does not function correctly across complex multi-switch topologies in PT
+- Configuration is correct and would work on production hardware
+- See "Packet Tracer Limitations" section
+
+---
+
+## Testing & Verification
+
+### Connectivity Test Matrix
+
+| Test # | Source | Destination | Expected Result | Actual Result | Status |
+|--------|--------|-------------|-----------------|---------------|--------|
+| 1 | PC0 (Thin Client) | PC4 (Server) | ✅ Allow | ✅ Success | ✅ PASS |
+| 2 | PC4 (Server) | PC0 (Thin Client) | ❌ Block | ❌ Blocked | ✅ PASS |
+| 3 | PC0 (Thin Client) | PC10 (Database) | ❌ Block | ❌ Blocked | ✅ PASS |
+| 4 | PC4 (Server) | PC10 (Database) | ✅ Allow | ✅ Success | ✅ PASS |
+| 5 | PC10 (Database) | PC0 (Thin Client) | ❌ Block | ❌ Blocked | ✅ PASS |
+| 6 | PC12 (Guest) | PC0 (Thin Client) | ❌ Block | ❌ Blocked | ✅ PASS |
+| 7 | PC12 (Guest) | PC4 (Server) | ❌ Block | ❌ Blocked | ✅ PASS |
+| 8 | PC12 (Guest) | PC10 (Database) | ❌ Block | ❌ Blocked | ✅ PASS |
+| 9 | PC12 (Guest) | PC8 (Classified) | ❌ Block | ❌ Blocked | ✅ PASS |
+| 10 | PC8 (Classified) | PC0 (Thin Client) | ❌ Block | ❌ Blocked | ✅ PASS |
+| 11 | PC8 (Classified) | PC4 (Server) | ❌ Block | ❌ Blocked | ✅ PASS |
+
+**Test Results Summary:**
+- Total Tests: 11
+- Passed: 11
+- Failed: 0
+- Success Rate: 100%
+
+### Security Policy Verification
+
+**✅ Policy 1: Thin clients can access servers**
+- Test: PC0 → PC4
+- Result: PASS (ping successful)
+
+**✅ Policy 2: Servers cannot initiate connections to thin clients**
+- Test: PC4 → PC0
+- Result: PASS (ping blocked)
+
+**✅ Policy 3: Thin clients cannot directly access databases**
+- Test: PC0 → PC10
+- Result: PASS (ping blocked)
+- Rationale: Must use application servers as intermediary
+
+**✅ Policy 4: Servers can access databases**
+- Test: PC4 → PC10
+- Result: PASS (ping successful)
+
+**✅ Policy 5: Databases cannot initiate to any VLAN**
+- Test: PC10 → PC0
+- Result: PASS (ping blocked)
+- Rationale: Databases should only respond to queries
+
+**✅ Policy 6: Classified systems completely isolated**
+- Test: PC8 → PC0, PC4
+- Result: PASS (all pings blocked)
+- Exception: Management VLAN can access classified
+
+**✅ Policy 7: Guest network completely isolated**
+- Test: PC12 → PC0, PC4, PC8, PC10
+- Result: PASS (all pings blocked)
+
+### Port Security Verification
+
+**Test Procedure:**
+1. Verify all ports show "Secure-up" status
+2. Attempt to connect unauthorized device (simulated by swapping PCs)
+3. Verify port enters "err-disabled" state
+4. Manually recover port
+
+**Results:**
+
+| Port | VLAN | Device | Security Status | Violation Test | Recovery Test |
+|------|------|--------|----------------|----------------|---------------|
+| Fa0/1 | 10 | PC0 | Secure-up | ✅ Port shutdown on violation | ✅ Recovered |
+| Fa0/5 | 20 | PC4 | Secure-up | ✅ Port shutdown on violation | ✅ Recovered |
+| Fa0/1 (SW2) | 30 | PC8 | Secure-up | ✅ Port shutdown on violation | ✅ Recovered |
+| Fa0/3 (SW2) | 40 | PC10 | Secure-up | ✅ Port shutdown on violation | ✅ Recovered |
+| Fa0/1 (SW3) | 50 | PC12 | Secure-up | ✅ Violation logged (Restrict mode) | N/A (Auto-recovers) |
+
+**Port Security Commands Used:**
+```cisco
+show port-security
+show port-security interface faX/X
+show port-security address
+```
+
+### Spanning Tree Verification
+
+**Root Bridge Election:**
+
+```cisco
+DIST-SW1#show spanning-tree summary
+Root bridge for: VLAN0001-VLAN0099
+Priority: 4096
+```
+
+**Expected Behavior:**
+- DIST-SW1 is root bridge for all VLANs ✅
+- Access switch ports have PortFast enabled ✅
+- BPDU Guard active on access ports ✅
+- Redundant paths exist with STP blocking loops ✅
+
+**Verification Commands:**
+```cisco
+show spanning-tree
+show spanning-tree summary
+show spanning-tree vlan X
+```
+
+---
+
+## Challenges & Solutions
+
+### Challenge 1: HSRP Not Working in Complex Topology
+
+**Problem:**
+- Both R1 and R2 showing as "Active"
+- Routers showing "unknown" for standby router
+- HSRP hellos not reaching between routers
+
+**Root Cause:**
+- Packet Tracer limitation with HSRP multicast (224.0.0.2) forwarding across multiple switches
+- Complex topology prevents proper HSRP neighbor discovery
+
+**Attempted Solutions:**
+1. ✗ Added dual connections from each router to both distribution switches
+2. ✗ Verified trunk configurations carry all VLANs
+3. ✗ Checked inter-distribution switch trunking
+4. ✗ Verified native VLAN consistency
+
+**Final Resolution:**
+- Powered off R2 for testing
+- All traffic routes through R1 only
+- HSRP configuration is correct and would work on real hardware
+- Documented as known Packet Tracer limitation
+
+**Lesson Learned:**
+- HSRP works in simple topologies (Lab 5 - single switch)
+- Production hardware does not have this limitation
+- Configuration skills demonstrated despite PT limitation
+
+### Challenge 2: ACL Direction (INBOUND vs OUTBOUND)
+
+**Problem:**
+- ACLs initially applied OUTBOUND on router subinterfaces
+- Traffic blocked incorrectly
+- Thin clients couldn't reach servers despite permit rules
+
+**Root Cause:**
+- Misunderstanding of ACL direction
+- OUTBOUND filters traffic going TO the VLAN (from router)
+- INBOUND filters traffic coming FROM the VLAN (entering router)
+
+**Solution:**
+- Changed all ACLs from OUTBOUND to INBOUND
+- ACLs now correctly filter traffic FROM each VLAN before routing
+
+**Critical Discovery:**
+```cisco
+! WRONG - Filters traffic TO the VLAN
+interface gig0/0.10
+ ip access-group PROTECT-THIN-CLIENTS out
+
+! CORRECT - Filters traffic FROM the VLAN
+interface gig0/0.10
+ ip access-group PROTECT-THIN-CLIENTS in
+```
+
+**Lesson Learned:**
+- ACL direction is critical and counterintuitive
+- Always verify with `show ip interface` and test traffic
+- This is a common real-world mistake
+
+### Challenge 3: Native VLAN Mismatch Errors
+
+**Problem:**
+- Spanning Tree errors: "Received BPDU with inconsistent peer vlan id"
+- Ports blocking due to native VLAN mismatch
+- Access switches configured before distribution switches
+
+**Root Cause:**
+- Access switches configured with native VLAN 99
+- Distribution switches not yet configured (default native VLAN 1)
+- Mismatch between peers
+
+**Solution:**
+- Errors resolved automatically once all switches configured
+- Consistency is key - all trunks must use same native VLAN
+- Native VLAN 99 chosen (not VLAN 1 - security best practice)
+
+**Lesson Learned:**
+- Configure infrastructure top-down (distribution before access)
+- Or expect temporary errors during build-out
+- Native VLAN must match on both ends of trunk
+
+### Challenge 4: Port Security Blocking Trunk Ports
+
+**Problem:**
+- Initial attempt to apply port security to trunk ports
+- Trunks went err-disabled
+- Multiple MAC addresses on trunk violate port security
+
+**Root Cause:**
+- Port security only works on access ports
+- Trunks carry traffic from multiple devices/MACs
+- Cannot restrict trunk to single MAC
+
+**Solution:**
+- Port security applied only to access ports (PC connections)
+- Trunks left without port security
+- Physical security controls trunk ports instead
+
+**Lesson Learned:**
+- Port security = access ports only
+- Trunk ports require different security (802.1X, private VLANs, physical security)
+
+### Challenge 5: Management VLAN Connectivity
+
+**Problem:**
+- Switches unable to ping router's management interface (192.168.99.2)
+- Router unable to ping switch management IPs
+- No ARP entries for management devices
+
+**Root Cause:**
+- Suspected native VLAN handling issue in Packet Tracer
+- Subinterface with native VLAN encapsulation may not process untagged traffic correctly
+- Known PT limitation with native VLAN on router subinterfaces
+
+**Attempted Solutions:**
+1. ✗ Changed native VLAN to regular tagged VLAN
+2. ✗ Modified ACLs to allow management traffic
+3. ✗ Verified trunk configuration carries VLAN 99
+4. ✗ Created PROTECT-MANAGEMENT ACL
+
+**Final Resolution:**
+- Documented as Packet Tracer limitation
+- Management VLAN would work on production hardware
+- Switch-to-switch and PC-to-gateway connectivity verified working
+
+### Challenge 6: Packet Tracer Interface Shutdown
+
+**Problem:**
+- Multiple trunk ports not coming up
+- Interfaces showing "administratively down"
+- Traffic not flowing
+
+**Root Cause:**
+- Forgot `no shutdown` command on trunk interfaces
+- Router interfaces default to shutdown
+- Some switch ports also shutdown by default
+
+**Solution:**
+- Systematically verified all interfaces with `show ip interface brief`
+- Added `no shutdown` to all trunk ports
+- Added to standard configuration checklist
+
+**Common Locations:**
+- Router physical interfaces (Gig0/0)
+- Distribution-to-router trunks
+- Access-to-distribution trunks
+- Distribution-to-distribution trunks
+
+**Lesson Learned:**
+- ALWAYS `no shutdown` on router interfaces
+- Include in initial configuration template
+- Verify with `show ip interface brief` after config
+
+### Challenge 7: ACL Naming Conventions (Hyphens vs Underscores)
+
+**Problem:**
+- ACL names inconsistent between R1 and R2
+- R1 configured manually with hyphens: `PROTECT-THIN-CLIENTS`
+- R2 copy-pasted with underscores: `PROTECT_THIN_CLIENTS`
+- Interface applying wrong ACL name, causing blocks
+
+**Root Cause:**
+- Early guidance suggested avoiding underscores
+- Later config examples used underscores
+- Inconsistency between routers
+
+**Solution:**
+- Standardized all ACL names to use hyphens
+- Updated interface ACL applications to match
+- Verified with `show access-lists` and `show ip interface`
+
+**Lesson Learned:**
+- Naming convention consistency is critical
+- Document standards before multi-device configs
+- Hyphens are valid and preferred in ACL names
+
+---
+
+## Packet Tracer Limitations
+
+### Known Issues Encountered
+
+**1. HSRP Across Multiple Switches**
+- **Issue:** HSRP routers cannot discover each other in complex topologies
+- **Impact:** Both routers show as Active, no failover functionality
+- **Workaround:** R2 powered off, all traffic through R1
+- **Production:** Works correctly on real hardware
+
+**2. Native VLAN on Router Subinterfaces**
+- **Issue:** Management VLAN (native) traffic not reaching router
+- **Impact:** Switches cannot ping router management interface
+- **Workaround:** None found, documented as limitation
+- **Production:** Works correctly on real hardware
+
+**3. EtherChannel/Link Aggregation**
+- **Issue:** `channel-group` command not available on some switch models
+- **Impact:** Cannot bundle multiple links for increased bandwidth
+- **Workaround:** Used individual trunk links instead
+- **Production:** EtherChannel works correctly on real hardware
+
+**4. ACL Match Counters**
+- **Issue:** Match counters sometimes not incrementing
+- **Impact:** Difficult to verify which ACL rules being hit
+- **Workaround:** Used ping tests to verify behavior
+- **Production:** Match counters work reliably
+
+**5. STP Port States**
+- **Issue:** Some ports show blocked when should be forwarding
+- **Impact:** Traffic may not flow through all redundant paths
+- **Workaround:** Verified at least one path working per VLAN
+- **Production:** STP more stable on real hardware
+
+### What Works Perfectly in Packet Tracer
+
+✅ VLAN configuration and trunking
+✅ Inter-VLAN routing (router-on-a-stick)
+✅ Access Control Lists (ACLs) - once direction corrected
+✅ Port security (all three violation modes)
+✅ Basic Spanning Tree Protocol
+✅ PortFast and BPDU Guard
+✅ Subinterface configuration
+✅ IP routing between VLANs
+✅ End-to-end connectivity testing
+✅ Security policy enforcement
+
+### Recommendations for Production
+
+**For Real Deployment:**
+1. HSRP will function correctly with proper multicast forwarding
+2. Native VLAN handling will work on router subinterfaces
+3. EtherChannel can be implemented for increased bandwidth
+4. Consider upgrading to GNS3 or EVE-NG for more accurate simulation
+5. Always test on actual hardware before production deployment
+
+---
+
+## Skills Demonstrated
+
+### Technical Skills
+
+**Network Design:**
+- ✅ Hierarchical network architecture (access, distribution, core)
+- ✅ VLAN segmentation for security zones
+- ✅ IP addressing scheme planning
+- ✅ Redundant path design
+- ✅ Security zone identification
+
+**Cisco IOS Configuration:**
+- ✅ Switch configuration (5 switches, 800+ lines)
+- ✅ Router configuration (2 routers, subinterfaces)
+- ✅ VLAN creation and management
+- ✅ Trunk port configuration (802.1Q)
+- ✅ Access port configuration
+- ✅ Spanning Tree Protocol (root bridge, PortFast, BPDU Guard)
+- ✅ HSRP configuration (priority, preemption, virtual IPs)
+- ✅ Extended named ACLs (6 different ACLs)
+- ✅ Port security (sticky MACs, violation modes)
+- ✅ Subinterface configuration (router-on-a-stick)
+
+**Security Implementation:**
+- ✅ Defense-in-depth architecture
+- ✅ ACL design and implementation
+- ✅ Port security deployment
+- ✅ Network segmentation
+- ✅ Security policy enforcement
+- ✅ Least privilege access
+
+**Troubleshooting:**
+- ✅ Systematic problem diagnosis
+- ✅ ACL direction troubleshooting
+- ✅ Native VLAN mismatch resolution
+- ✅ Trunk port verification
+- ✅ Port security violation recovery
+- ✅ Spanning Tree troubleshooting
+- ✅ HSRP neighbor issues (PT limitations)
+
+**Testing & Verification:**
+- ✅ Connectivity testing (ping, traceroute)
+- ✅ Security policy verification
+- ✅ Port security testing
+- ✅ ACL rule validation
+- ✅ Spanning Tree verification
+- ✅ Documentation of test results
+
+### Professional Skills
+
+**Problem-Solving:**
+- ✅ Methodical troubleshooting approach
+- ✅ Root cause analysis
+- ✅ Creative workarounds for limitations
+- ✅ Learning from mistakes
+
+**Documentation:**
+- ✅ Comprehensive technical documentation
+- ✅ Network diagrams
+- ✅ Configuration templates
+- ✅ Test procedures and results
+- ✅ Known issues and workarounds
+
+**Attention to Detail:**
+- ✅ Consistent naming conventions
+- ✅ IP addressing accuracy
+- ✅ ACL rule ordering
+- ✅ Configuration verification
+
+**Adaptability:**
+- ✅ Adjusting to Packet Tracer limitations
+- ✅ Learning new concepts (ACL direction, STP)
+- ✅ Iterative problem-solving
+
+---
+
+## Conclusion
+
+### Project Summary
+
+This capstone project successfully demonstrates the design and implementation of an enterprise-grade air-gapped government network with comprehensive security controls. Despite encountering Packet Tracer limitations (HSRP, native VLAN handling), the project showcases production-ready configurations and deep understanding of networking concepts.
+
+**Key Achievements:**
+- ✅ 21 devices configured (5 switches, 2 routers, 14 endpoints)
+- ✅ 6 VLANs with proper segmentation
+- ✅ 6 Access Control Lists enforcing security policy
+- ✅ Port security on 14 access ports
+- ✅ Spanning Tree Protocol preventing loops
+- ✅ 100% security test success rate (11/11 tests passed)
+- ✅ 800+ lines of Cisco IOS configuration
+- ✅ Comprehensive documentation suitable for production
+
+### Lessons Learned
+
+**Technical:**
+1. **ACL Direction Matters:** Inbound vs outbound completely changes behavior
+2. **Native VLAN Consistency:** Must match on both ends of trunk
+3. **Port Security on Access Ports Only:** Trunks carry multiple MACs
+4. **HSRP in Complex Topologies:** Requires proper multicast forwarding
+5. **Packet Tracer Has Limitations:** Real hardware behaves differently
+
+**Professional:**
+1. **Document Everything:** Troubleshooting notes invaluable for learning
+2. **Test Incrementally:** Don't configure everything before testing
+3. **Naming Conventions Matter:** Consistency prevents errors
+4. **PT ≠ Production:** Understand simulator limitations
+5. **Patience Pays Off:** Complex projects take time and iteration
+
+### Future Enhancements
+
+**If Implementing on Real Hardware:**
+1. Deploy HSRP for true gateway redundancy
+2. Implement EtherChannel for increased bandwidth
+3. Add DHCP snooping and Dynamic ARP Inspection
+4. Configure 802.1X for port-based authentication
+5. Implement syslog server for centralized logging
+6. Add SNMP monitoring and alerting
+7. Deploy AAA (TACACS+/RADIUS) for centralized authentication
+8. Implement QoS for voice/video traffic prioritization
+
+**Additional Skills to Learn:**
+- GNS3/EVE-NG for better simulation
+- Python/Ansible for automation
+- Wireshark for packet analysis
+- Network monitoring tools (PRTG, SolarWinds)
+- Firewall configuration (ASA, Palo Alto)
+- VPN technologies (IPsec, SSL VPN)
+
+### Final Thoughts
+
+This capstone project represents the culmination of extensive learning across multiple networking domains. The network is production-ready in its design and configuration, with known Packet Tracer limitations documented and understood.
+
+The project demonstrates not just technical proficiency in Cisco technologies, but also professional skills in troubleshooting, documentation, and problem-solving—critical abilities for any network engineer.
+
+For an entry-level IT position, this project showcases advanced understanding of enterprise networking concepts and hands-on configuration experience that directly translates to real-world government network deployments.
+
+---
+
+## Appendices
+
+### Appendix A: Configuration Checklist
+
+**Pre-Implementation:**
+- [ ] IP addressing scheme documented
+- [ ] VLAN design completed
+- [ ] Security policy defined
+- [ ] Topology diagram created
+
+**Switch Configuration:**
+- [ ] Hostname and passwords
+- [ ] VLANs created
+- [ ] Access ports assigned to VLANs
+- [ ] Port security configured
+- [ ] PortFast and BPDU Guard enabled
+- [ ] Trunk ports configured
+- [ ] Native VLAN set
+- [ ] Management VLAN IP assigned
+- [ ] Default gateway configured
+- [ ] Spanning Tree priority set (distribution)
+
+**Router Configuration:**
+- [ ] Hostname and passwords
+- [ ] Physical interface enabled (no shutdown)
+- [ ] Subinterfaces created
+- [ ] 802.1Q encapsulation configured
+- [ ] IP addresses assigned
+- [ ] HSRP virtual IPs configured
+- [ ] HSRP priority set
+- [ ] HSRP preemption enabled
+- [ ] ACLs created
+- [ ] ACLs applied to interfaces (INBOUND)
+- [ ] IP routing enabled
+
+**Testing:**
+- [ ] Connectivity tests (same VLAN)
+- [ ] Connectivity tests (inter-VLAN)
+- [ ] ACL policy verification
+- [ ] Port security testing
+- [ ] Spanning Tree verification
+- [ ] HSRP verification
+- [ ] Documentation complete
+
+### Appendix B: Command Quick Reference
+
+**Show Commands:**
+```cisco
+show vlan brief
+show interfaces trunk
+show ip interface brief
+show running-config
+show access-lists
+show port-security
+show port-security interface faX/X
+show spanning-tree
+show spanning-tree summary
+show standby brief
+show ip route
+show arp
+show cdp neighbors
+```
+
+**Troubleshooting Commands:**
+```cisco
+show interfaces faX/X
+show interfaces status
+show ip interface gig0/0.X
+clear port-security sticky
+clear access-list counters
+debug standby (use with caution)
+```
+
+### Appendix C: Acronyms and Terminology
+
+- **ACL:** Access Control List
+- **BPDU:** Bridge Protocol Data Unit
+- **HSRP:** Hot Standby Router Protocol
+- **MAC:** Media Access Control
+- **PT:** Packet Tracer
+- **STP:** Spanning Tree Protocol
+- **VLAN:** Virtual Local Area Network
+- **VTY:** Virtual Terminal (Telnet/SSH access)
+- **802.1Q:** VLAN tagging protocol
+- **AAA:** Authentication, Authorization, Accounting
+- **err-disabled:** Error-disabled port state (requires manual recovery)
+
+
+---
+
+END OF CAPSTONE PROJECT DOCUMENTATION
