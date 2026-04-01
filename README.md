@@ -49,6 +49,13 @@ A fully functional Active Directory deomain environment built for learning enter
 - Security best practices in isolated environments
 - Troubleshooting and problem-solving
 
+### Patch Management & Maintenance
+- Manual air-gapped patching workflow
+- WSUS installation and configuration
+- Offline update repository concepts
+- Update dependency management (SSU, Cumulative, .NET)
+- wsusutil.exe and update import processes
+
 ## Project Status
 - Active deployment - Ongoing learning and expanision
 

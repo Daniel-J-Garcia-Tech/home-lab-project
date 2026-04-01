@@ -327,4 +327,33 @@ whoami /groups                          # Show group memberships
 
 ---
 
+## WSUS Configuration (Air-Gapped Limitations)
+
+### WSUS Installation
+**Installed Windows Server Update Services:**
+- Role: Windows Server Update Services
+- Database: Windows Internal Database (WID)
+- Content Location: C:\WSUS
+- Purpose: Centralized patch management for domain clients
+
+**Configuration Challenges in Air-Gapped Environment:**
+- WSUS designed for internet connectivity to download product catalog
+- Product catalog (wsusscn2.cab) is for offline scanning, not WSUS import
+- Air-gapped WSUS requires either:
+  - Replica server architecture (upstream/downstream WSUS servers)
+  - Initial internet connection for product catalog sync
+  - Manual update import using wsusutil.exe with exported WSUS packages
+
+**Current Status:**
+- WSUS role installed and configured
+- Automatic synchronization disabled
+- Prepared for potential future configuration with upstream server or manual import workflow
+
+**Key Learning:**
+- WSUS is powerful for connected environments
+- Air-gapped patch management often relies on manual processes
+- Understanding both centralized (WSUS) and manual patching approaches is valuable
+
+---
+
 *This homelab demonstrates practical implementation of enterprise Windows infrastructure in a controlled, learning-focused environment.*

@@ -146,6 +146,45 @@ This document captures key challenges, solutions, and insights gained during the
 
 ---
 
+## Challenge 7: WSUS in Air-Gapped Environment
+
+**Problem:**
+- Attempted to configure WSUS for air-gapped patch management
+- WSUS configuration wizard requires upstream server connectivity
+- Product catalog cannot be easily imported offline
+- wsusscn2.cab (offline scan file) is not the same as WSUS product catalog
+
+**Root Cause:**
+- WSUS is designed with internet connectivity in mind
+- Product catalog synced from Microsoft Update during initial configuration
+- Air-gapped WSUS requires replica server architecture or export/import from connected WSUS
+
+**Attempted Solutions:**
+- Downloaded wsusscn2.cab (offline Windows Update scan file)
+- Attempted manual import via wsusutil.exe
+- Configured WSUS to disable automatic synchronization
+
+**Actual Solution:**
+- Recognized that air-gapped WSUS requires either:
+  - Upstream/downstream server architecture
+  - Initial sync with internet before air-gapping
+  - Manual update import with proper WSUS export packages
+
+**Lesson Learned:**
+- Not all enterprise tools translate directly to air-gapped environments
+- Manual patching processes (already practiced) are often more practical for air-gapped systems
+- Understanding tool limitations is as important as knowing how to use them
+- Real-world air-gapped environments may use alternative patch management strategies
+- WSUS knowledge still valuable for understanding centralized patch management concepts
+
+**Interview Value:**
+- Demonstrates understanding of both centralized and manual patching
+- Shows problem-solving when tools don't fit the environment
+- Recognizes when to use alternative approaches
+- Understands enterprise patch management architecture
+
+---
+
 ## Key Takeaways
 
 **Technical Skills Gained:**
