@@ -356,4 +356,100 @@ whoami /groups                          # Show group memberships
 
 ---
 
+## Linux VM Installation and Configuration
+
+### Ubuntu Server 24.04 LTS
+
+**Created via CLI:**
+```bash
+qm create 104 \
+  --name Ubuntu-Server-Lab \
+  --pool production-vms \
+  --memory 2048 \
+  --cores 2 \
+  --cpu host \
+  --net0 virtio,bridge=vmbr0 \
+  --ide2 vm-storage:iso/ubuntu-24.04.4-live-server-amd64.iso,media=cdrom \
+  --boot order=ide2 \
+  --ostype l26 \
+  --scsihw virtio-scsi-single \
+  --scsi0 vm-storage:20,format=qcow2
+```
+
+**Specifications:**
+- VM ID: 104
+- RAM: 2GB
+- CPU: 2 cores
+- Disk: 20GB (VirtIO SCSI)
+- Network: VirtIO on vmbr0
+- OS: Ubuntu Server 24.04.4 LTS (minimized installation)
+- Hostname: ubuntu-lab
+- User: labadmin
+
+**Installation Process:**
+- Selected Ubuntu Server (minimized) for minimal footprint
+- Configured DHCP networking (IP from DC: 10.12.59.50)
+- Installed OpenSSH server for remote management
+- Skipped Ubuntu Pro subscription
+- Created local administrator account
+
+**Post-Installation Package Management:**
+- Installed essential tools via manual .deb download and transfer
+- Packages installed: htop, dnsutils, traceroute, apt-mirror, tree, ncdu, tcpdump
+- Used USB transfer method (air-gapped workflow)
+- Resolved dependencies using `apt --fix-broken install`
+
+### Offline APT Repository Creation
+
+**Purpose:** Enable air-gapped package management for Linux systems
+
+**Repository Structure:**
+/var/local-repo/
+├── debs/           # Package files (.deb)
+└── Packages        # Repository index metadata
+
+**Implementation Steps:**
+
+1. **Organized packages into repository structure:**
+```bash
+sudo mkdir -p /var/local-repo/debs
+sudo cp ~/packages/*.deb /var/local-repo/debs/
+```
+
+2. **Generated repository index:**
+```bash
+sudo bash -c "apt-ftparchive packages debs > Packages"
+```
+
+3. **Configured APT to use local repository:**
+Created `/etc/apt/sources.list.d/local-repo.list`:
+deb [trusted=yes] file:///var/local-repo/ ./
+
+4. **Updated APT cache:**
+```bash
+sudo apt update
+```
+
+5. **Tested installation from local repository:**
+```bash
+sudo apt remove tree -y
+sudo apt install tree
+```
+Verified package installed from `file:/var/local-repo`
+
+**Key Learning:**
+- Manual package download workflow for air-gapped environments
+- Dependency resolution challenges and solutions
+- Repository metadata generation using apt-ftparchive
+- Local repository configuration and testing
+
+**Skills Demonstrated:**
+- Linux system administration
+- Air-gapped package management
+- Repository creation and maintenance
+- Dependency management
+- Command-line package tools (dpkg, apt, apt-ftparchive)
+
+---
+
 *This homelab demonstrates practical implementation of enterprise Windows infrastructure in a controlled, learning-focused environment.*

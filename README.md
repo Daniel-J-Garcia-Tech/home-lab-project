@@ -19,42 +19,72 @@ A fully functional Active Directory deomain environment built for learning enter
 ## Technologies & Skills Demonstrated
 
 ### Active Directory
-- Domain COntroller deployment
+- Domain Controller deployment
 - Organizational Units (OUs) structure
 - User and Group management
 - Group Policy Objects (GPOs)
 - FSMO roles management
 
-## Networking
+### Networking
 - DHCP Server configuration
 - DNS integration
 - Air-gapped network design
-- NAT configuration
+- NAT configuration (and removal for isolation)
+- Network segmentation and routing
 
 ### Remote Access
 - Remote Desktop Services (RDS)
 - Session-based desktop deployment
 - Thin client simulation
+- SSH server configuration and management
+- SSH jump host / ProxyJump usage
+
+### Patch Management & Maintenance
+- Air-gapped Windows patching workflow
+- Air-gapped Linux package management
+- Manual update deployment (Windows .msu, Linux .deb)
+- WSUS installation and configuration
+- Offline APT repository creation and maintenance
+- Update dependency management
+- Repository metadata generation (apt-ftparchive)
+
+### Virtualization
+- Proxmox VE administration
+- VM creation via CLI (qm create)
+- Resource pool management
+- VirtIO driver configuration
+- VM lifecycle management
+
+### Linux System Administration
+- Ubuntu Server installation and configuration
+- Package management (apt, dpkg)
+- Dependency resolution
+- System monitoring (htop, logs, processes)
+- File system navigation and management
+- Service management (systemd)
+- SSH server setup and hardening
+
+### Scripting & Automation
+- Bash scripting (WiFi startup automation)
+- Network service configuration
+- systemd service creation
 
 ### Security & Maintenance
-- Air-gapped patching workflow
-- Manual update deployment
+- Air-gapped environment configuration
 - Group Policy security filtering
-- Network isolation
+- Network isolation and verification
+- Manual security update deployment
+- Access control and permissions
 
 ## Key Learning Outcomes
 - Enterprise AD domain administration
-- Windows Server Infrastructure management
-- Network services infrastructure management
+- Windows Server infrastructure management
+- Linux system administration fundamentals
+- Network services configuration
 - Security best practices in isolated environments
 - Troubleshooting and problem-solving
-
-### Patch Management & Maintenance
-- Manual air-gapped patching workflow
-- WSUS installation and configuration
-- Offline update repository concepts
-- Update dependency management (SSU, Cumulative, .NET)
-- wsusutil.exe and update import processes
+- Air-gapped patch management for both Windows and Linux
+- Offline repository creation and maintenance
 
 ## Project Status
 - Active deployment - Ongoing learning and expanision

@@ -185,6 +185,119 @@ This document captures key challenges, solutions, and insights gained during the
 
 ---
 
+## Challenge 8: Linux Package Dependencies in Air-Gapped Environment
+
+**Problem:**
+- Attempted to install packages (.deb files) downloaded individually
+- Installation failed due to missing dependencies
+- Each package required multiple other packages not initially downloaded
+- Error messages: "dependency problems prevent configuration"
+
+**Root Cause:**
+- .deb packages have complex dependency trees
+- Downloading a single package doesn't include its dependencies
+- APT normally handles this automatically by downloading from repositories
+- In air-gapped environments, all dependencies must be manually acquired
+
+**Solution:**
+- Installed packages using `sudo dpkg -i *.deb`
+- Used `sudo apt --fix-broken install` to identify missing dependencies
+- APT downloaded dependencies from available online repositories (archive.ubuntu.com)
+- Some packages failed due to security.ubuntu.com repository DNS issues
+- Successfully installed: htop, dnsutils, traceroute, tree, ncdu, tcpdump, apt-mirror
+
+**Lesson Learned:**
+- Dependencies are critical in Linux package management
+- Air-gapped environments require downloading entire dependency trees
+- Tools exist for this (apt-rdepends, apt-offline) but weren't available
+- `apt --fix-broken install` can resolve dependencies if partial internet access exists
+- True air-gap requires pre-downloading all dependencies or maintaining full repository mirrors
+- Understanding dependency resolution is essential for offline patch management
+
+---
+
+## Challenge 9: Creating Offline APT Repository
+
+**Problem:**
+- Needed to demonstrate offline Linux package management capability
+- Full Ubuntu repository mirror (via apt-mirror) would require 50-100+ GB download
+- Limited time and disk space for comprehensive mirror
+- DNS resolution issues preventing some repository access
+
+**Root Cause:**
+- Full repository mirrors are designed for complete offline installations
+- Lab environment doesn't need entire Ubuntu package ecosystem
+- Goal was to demonstrate understanding, not create production infrastructure
+
+**Solution:**
+- Created small, custom local APT repository from manually downloaded packages
+- Used `/var/local-repo/` following Linux FHS (Filesystem Hierarchy Standard)
+- Generated repository metadata with `apt-ftparchive packages`
+- Configured APT to use local file:// URI
+- Tested by removing and reinstalling package from local repo
+
+**Implementation:**
+```bash
+# Created repo structure
+sudo mkdir -p /var/local-repo/debs
+
+# Copied packages
+sudo cp ~/packages/*.deb /var/local-repo/debs/
+
+# Generated index
+sudo bash -c "apt-ftparchive packages debs > Packages"
+
+# Configured APT source
+echo 'deb [trusted=yes] file:///var/local-repo/ ./' | sudo tee /etc/apt/sources.list.d/local-repo.list
+
+# Tested
+sudo apt update
+sudo apt install tree
+```
+
+**Lesson Learned:**
+- Small, focused repositories are practical for air-gapped demos
+- Understanding repository structure more important than size
+- `apt-ftparchive` creates APT-compatible metadata from .deb files
+- Local file:// repositories work identically to HTTP repositories
+- [trusted=yes] bypasses GPG signature verification for local repos
+- This approach scales: same process works for 10 packages or 10,000
+- Interview demonstration doesn't require production-scale infrastructure
+
+---
+
+## Challenge 10: SSH Access Between Network Segments
+
+**Problem:**
+- Main PC (192.168.0.x network) couldn't directly SSH to Ubuntu VM (10.12.59.x network)
+- Connection timeout errors despite SSH service running
+- Different subnets with no direct routing
+
+**Root Cause:**
+- Network topology: Main PC and VMs on different networks
+- Main PC → Home WiFi (192.168.0.x)
+- Proxmox → WiFi + Internal bridge (vmbr0)
+- VMs → Internal network only (10.12.59.x)
+- No route exists between 192.168.0.x and 10.12.59.x
+
+**Solution:**
+- Used SSH jump/proxy through Proxmox host
+- Two-hop connection: Main PC → Proxmox → Ubuntu VM
+- Manual method: SSH to Proxmox, then SSH to VM
+- Alternative: `ssh -J root@192.168.0.243 labadmin@10.12.59.50` (ProxyJump)
+
+**Lesson Learned:**
+- Network segmentation requires understanding routing paths
+- SSH jump hosts are common in enterprise environments
+- ProxyJump (-J flag) simplifies multi-hop connections
+- Air-gapped doesn't mean "no network" - means isolated network
+- Internal networks still need proper addressing and routing
+- Copy/paste capability via SSH significantly improves troubleshooting efficiency
+
+---
+
+---
+
 ## Key Takeaways
 
 **Technical Skills Gained:**
