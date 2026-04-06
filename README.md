@@ -65,16 +65,24 @@ A fully functional Active Directory deomain environment built for learning enter
 - SSH server setup and hardening
 
 ### Scripting & Automation
+- **PowerShell scripting fundamentals**
+  - System health monitoring scripts
+  - Patch verification automation
+  - Variables, objects, and cmdlets
+  - WMI/CIM queries for system data
+  - Mathematical calculations and formatting
+  - Script creation and reusability
 - Bash scripting (WiFi startup automation)
 - Network service configuration
 - systemd service creation
 
 ### Security & Maintenance
-- Air-gapped environment configuration
+- **Air-gapped environment configuration and verification**
+- **Network isolation enforcement (iptables NAT removal)**
 - Group Policy security filtering
-- Network isolation and verification
 - Manual security update deployment
 - Access control and permissions
+- Firewall configuration
 
 ## Key Learning Outcomes
 - Enterprise AD domain administration

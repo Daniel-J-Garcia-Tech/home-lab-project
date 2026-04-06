@@ -452,4 +452,126 @@ Verified package installed from `file:/var/local-repo`
 
 ---
 
+## Air-Gap Network Verification and Enforcement
+
+### Final Air-Gap Configuration
+
+**Problem Identified:**
+- NAT MASQUERADE rule was still active in iptables
+- VMs had internet access despite intention to be air-gapped
+- Rule showed 3,925 packets and 332KB of traffic had passed through
+
+**Permanent Air-Gap Implementation:**
+
+1. **Removed active NAT rule:**
+```bash
+iptables-legacy -t nat -D POSTROUTING -s '10.12.59.0/24' -o wlp4s0 -j MASQUERADE
+```
+
+2. **Prevented recreation on reboot:**
+Commented out NAT rules in `/etc/network/interfaces`:
+```bash
+#    post-up iptables -t nat -A POSTROUTING -s '10.12.59.0/24' -o wlp4s0 -j MASQUERADE
+#    post-down iptables -t nat -D POSTROUTING -s '10.12.59.0/24' -o wlp4s0 -j MASQUERADE
+```
+
+3. **Verification Testing:**
+- VM 102 (Windows Server): ❌ Cannot ping 8.8.8.8 ✅
+- VM 103 (Windows 10): ❌ Cannot ping 8.8.8.8 ✅
+- VM 104 (Ubuntu): ❌ Cannot ping 8.8.8.8 ✅
+- Internal connectivity: ✅ VMs can communicate with each other
+- Domain services: ✅ Working (domain login functional)
+
+**Result:**
+All VMs confirmed isolated from internet while maintaining internal network functionality. Air-gap successfully enforced and verified.
+
+---
+
+## PowerShell Scripting and Automation
+
+### Scripts Created
+
+**Location:** `C:\Scripts\` on Windows Server (VM 102)
+
+**1. System-Health-Check.ps1**
+
+**Purpose:** Quick system status overview for daily health checks
+
+**Features:**
+- Computer name identification
+- Operating system information
+- System uptime calculation
+- Memory usage (used/total in GB)
+- Disk space reporting (C: drive)
+- Color-coded output for readability
+
+**Key PowerShell Concepts Demonstrated:**
+- `Get-CimInstance` for system information retrieval
+- Variables and object properties
+- Mathematical calculations and rounding
+- DateTime arithmetic for uptime
+- Unit conversion (KB to GB)
+- Formatted console output with colors
+
+**Sample Output:**
+=== System Health Check ===
+Computer: WIN-MMKOM79RUSR
+OS: Microsoft Windows Server 2025 Datacenter
+Uptime: 3 days, 2 hours
+Memory: 1.52 GB used / 7.98 GB total
+Disk Space:
+C: - Used: 21.53 GB, Free: 77.49 GB
+Health check complete!
+
+---
+
+**2. Check-Installed-Updates.ps1**
+
+**Purpose:** Verify patch deployment and track installed updates
+
+**Features:**
+- Lists last 10 installed Windows updates
+- Shows HotFix ID, description, and installation date
+- Formatted table output
+
+**Key PowerShell Concepts:**
+- `Get-HotFix` cmdlet for update information
+- Pipeline operations (`|`)
+- Object filtering and selection
+- Table formatting
+
+**Use Case:**
+Essential for patch validation in air-gapped environments where automated update verification isn't available.
+
+---
+
+### PowerShell Skills Acquired
+
+**Fundamentals:**
+- Variables and data types
+- Environment variables (`$env:`)
+- Object properties and methods
+- Mathematical operations
+- String interpolation
+
+**System Administration:**
+- WMI/CIM queries for system information
+- DateTime calculations
+- Unit conversions
+- Data formatting and presentation
+
+**Script Development:**
+- PowerShell ISE usage
+- Script creation and saving (.ps1 files)
+- Code commenting and documentation
+- Reusable automation scripts
+
+**Best Practices:**
+- Descriptive variable names
+- Color-coded output for different data types
+- Proper script headers with purpose documentation
+- Modular, readable code structure
+
+---
+
 *This homelab demonstrates practical implementation of enterprise Windows infrastructure in a controlled, learning-focused environment.*

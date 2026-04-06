@@ -296,6 +296,46 @@ sudo apt install tree
 
 ---
 
+## Challenge 11: Air-Gap Enforcement and Verification
+
+**Problem:**
+- Believed VMs were air-gapped after initial NAT rule removal
+- Discovered NAT MASQUERADE rule was still active in iptables
+- Rule showed 3,925 packets and 332KB transferred - VMs had been accessing internet
+- Previous air-gap attempts were incomplete
+
+**Root Cause:**
+- NAT rule existed in two places: active iptables rules AND network configuration file
+- Removing from one location wasn't sufficient
+- Network configuration file (`/etc/network/interfaces`) recreated the rule on reboot
+- Multiple layers of network configuration required comprehensive approach
+
+**Solution:**
+1. Removed active NAT rule from iptables:
+```bash
+iptables-legacy -t nat -D POSTROUTING -s '10.12.59.0/24' -o wlp4s0 -j MASQUERADE
+```
+
+2. Commented out (preserved for future re-enable if needed) NAT rules in `/etc/network/interfaces`:
+```bash
+#    post-up iptables -t nat -A POSTROUTING -s '10.12.59.0/24' -o wlp4s0 -j MASQUERADE
+#    post-down iptables -t nat -D POSTROUTING -s '10.12.59.0/24' -o wlp4s0 -j MASQUERADE
+```
+
+3. Verified air-gap on all three VMs:
+- Tested internet connectivity (ping 8.8.8.8) - all failed ✅
+- Tested internal connectivity - working ✅
+- Verified domain services - functional ✅
+
+**Lesson Learned:**
+- Air-gapping requires verification at multiple levels
+- Network isolation isn't "set it and forget it" - requires testing
+- Configuration persistence (surviving reboots) is separate from active state
+- Documentation of network changes prevents confusion later
+- Commenting out rules (rather than deleting) preserves configuration for future needs
+- Thorough testing of all VMs ensures complete isolation
+- Understanding the difference between runtime state and persistent configuration is critical
+
 ---
 
 ## Key Takeaways
