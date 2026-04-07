@@ -338,6 +338,52 @@ iptables-legacy -t nat -D POSTROUTING -s '10.12.59.0/24' -o wlp4s0 -j MASQUERADE
 
 ---
 
+## Challenge 12: Storage Types and Snapshot Capability
+
+**Problem:**
+- Attempted to create snapshots on VMs stored on directory-based storage (vm-storage)
+- Received "feature not available" error despite VMs using qcow2 disk format
+- qcow2 format supports snapshots in general, but Proxmox implementation depends on storage type
+
+**Root Cause:**
+- Proxmox's snapshot feature availability depends on storage backend, not just disk format
+- Directory storage (even with qcow2) does not enable snapshot features in Proxmox
+- LVM-thin, ZFS, and Ceph storage types support snapshots natively
+- Initial VM deployment on vm-storage (directory type) limited snapshot capability
+
+**Solution:**
+1. Identified storage types and their capabilities:
+   - `local-lvm`: LVM-thin pool - supports snapshots ✅
+   - `vm-storage`: Directory storage - no snapshot support ❌
+
+2. Migrated VMs 103 and 104 to local-lvm for snapshot support:
+```bash
+qm move-disk 103 scsi0 local-lvm --format raw --delete 1
+qm move-disk 104 scsi0 local-lvm --format raw --delete 1
+```
+
+3. Kept VM 102 on vm-storage, used backup/restore instead
+
+4. Verified snapshot functionality on migrated VMs
+
+**Lesson Learned:**
+- Storage backend determines feature availability in virtualization platforms
+- Different storage types have different capabilities and use cases
+- LVM-thin provides snapshots but has over-provisioning considerations
+- Directory storage is simple but lacks advanced features
+- Migration between storage types is straightforward but requires VM downtime
+- Both snapshots and backups have valid use cases - not either/or
+- Understanding storage architecture is critical for production environments
+
+**Skills Demonstrated:**
+- Storage type comparison and selection
+- VM disk migration between storage backends
+- Snapshot creation and rollback testing
+- Backup and restore procedures
+- Understanding virtualization storage layers
+
+---
+
 ## Key Takeaways
 
 **Technical Skills Gained:**

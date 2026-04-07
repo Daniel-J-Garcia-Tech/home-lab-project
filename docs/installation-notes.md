@@ -574,4 +574,163 @@ Essential for patch validation in air-gapped environments where automated update
 
 ---
 
+## Backup, Restore, Snapshot, and Rollback Procedures
+
+### Storage Migration for Snapshot Support
+
+**Problem:** Initial VM storage (vm-storage, directory type) did not support snapshot functionality.
+
+**Solution:** Migrated VMs 103 and 104 to local-lvm (LVM-thin) storage which supports snapshots.
+
+**Migration Process:**
+
+1. **Stopped VMs:**
+```bash
+qm stop 103
+qm stop 104
+```
+
+2. **Migrated disks to LVM-thin storage:**
+```bash
+qm move-disk 104 scsi0 local-lvm --format raw --delete 1
+qm move-disk 103 scsi0 local-lvm --format raw --delete 1
+```
+
+3. **Verified migration:**
+```bash
+qm config 103 | grep scsi0  # Confirmed: local-lvm:vm-103-disk-0
+qm config 104 | grep scsi0  # Confirmed: local-lvm:vm-104-disk-0
+```
+
+**Storage Configuration After Migration:**
+- **VM 102 (Windows Server):** vm-storage (directory) - 100GB
+- **VM 103 (Windows 10):** local-lvm (LVM-thin) - 60GB  
+- **VM 104 (Ubuntu):** local-lvm (LVM-thin) - 20GB
+
+---
+
+### Snapshot Procedures (LVM-thin Storage)
+
+**VMs on local-lvm storage support instant snapshots.**
+
+**Creating Snapshots via CLI:**
+```bash
+# Create snapshot
+qm snapshot 104 before-snapshot-test --description "Clean state before snapshot training"
+
+# List snapshots
+qm listsnapshot 104
+
+# Rollback to snapshot
+qm rollback 104 before-snapshot-test
+
+# Delete snapshot
+qm delsnapshot 104 before-snapshot-test
+```
+
+**Snapshot Testing Process:**
+
+1. Created baseline snapshot of VM 104 (Ubuntu)
+2. Made changes to VM (created test file: `~/test-file.txt`)
+3. Rolled back to snapshot
+4. Verified changes were reverted (test file disappeared)
+
+**Result:** Snapshots provide instant point-in-time recovery for VMs on LVM-thin storage.
+
+**Use Cases:**
+- Pre-patch snapshots for quick rollback
+- Before major configuration changes
+- Testing new software installations
+- Quick recovery during maintenance windows
+
+---
+
+### Backup and Restore Procedures (All Storage Types)
+
+**Proxmox backup (vzdump) works on any storage type and creates portable backup files.**
+
+**Creating Backups via Web Interface:**
+
+1. Navigate to VM → Backup tab
+2. Click "Backup now"
+3. Configure:
+   - **Storage:** local (/var/lib/vz)
+   - **Mode:** Snapshot
+   - **Compression:** ZSTD
+4. Click "Backup"
+
+**Backup created for VM 102 (Windows Server):**
+- Storage: local
+- Size: ~22GB (compressed from 100GB disk)
+- Duration: ~10 minutes
+- Location: /var/lib/vz/dump/
+
+**Restoring from Backup:**
+
+1. Stop the VM (required before restore)
+2. Navigate to VM → Backup tab
+3. Select backup from list
+4. Click "Restore"
+5. Confirm restore operation
+6. Start VM after restore completes
+
+**Restore Testing Process:**
+
+1. Created test file on VM 102 desktop (`test-before-restore.txt`)
+2. Stopped VM 102
+3. Restored from backup (taken before test file creation)
+4. Started VM 102
+5. Verified test file was gone - restore successful
+
+**Result:** Backup and restore provides full VM recovery capability.
+
+**Use Cases:**
+- Disaster recovery
+- VM migration between Proxmox hosts
+- Long-term archival
+- Major system changes requiring full recovery option
+
+---
+
+### Comparison: Snapshots vs Backups
+
+| Feature | Snapshots (LVM-thin) | Backups (vzdump) |
+|---------|---------------------|------------------|
+| **Speed** | Instant (seconds) | Slow (minutes) |
+| **Storage Required** | Minimal (delta only) | Full VM size |
+| **Storage Type** | LVM-thin only | Any storage |
+| **Portability** | Not portable | Portable file |
+| **Best For** | Quick rollbacks | Disaster recovery |
+
+**Best Practice Workflow:**
+
+1. **Before patches/changes:** Take snapshot (if on LVM-thin)
+2. **Weekly/monthly:** Full backup to local storage
+3. **Before major upgrades:** Both snapshot AND backup
+4. **After successful changes:** Delete old snapshots to free space
+
+---
+
+### Storage Considerations
+
+**LVM-thin Over-provisioning Warning:**
+
+During snapshot operations, received warning about thin pool over-provisioning:
+WARNING: Sum of all thin volume sizes (160.00 GiB) exceeds the size of thin pool pve/data
+and the amount of free space in volume group (16.00 GiB).
+
+**Explanation:**
+- LVM-thin allows over-provisioning (allocate more than physically available)
+- Total allocated: 180GB (100GB + 60GB + 20GB)
+- Physical available: ~148GB in thin pool
+- Actual usage is much less than allocated
+- This is normal for thin provisioning but requires monitoring
+
+**Recommendation for Production:**
+- Configure thin_pool_autoextend_threshold
+- Monitor actual disk usage vs allocated
+- Keep ~20% free space buffer for snapshots
+
+---
+
 *This homelab demonstrates practical implementation of enterprise Windows infrastructure in a controlled, learning-focused environment.*

@@ -54,6 +54,11 @@ A fully functional Active Directory deomain environment built for learning enter
 - Resource pool management
 - VirtIO driver configuration
 - VM lifecycle management
+- **Storage type configuration and migration**
+- **LVM-thin vs directory storage**
+- **Snapshot management and rollback procedures**
+- **Backup and restore operations (vzdump)**
+- **Disaster recovery testing**
 
 ### Linux System Administration
 - Ubuntu Server installation and configuration
@@ -93,6 +98,12 @@ A fully functional Active Directory deomain environment built for learning enter
 - Troubleshooting and problem-solving
 - Air-gapped patch management for both Windows and Linux
 - Offline repository creation and maintenance
+- **Backup and disaster recovery procedures**
+  - VM snapshots on LVM-thin storage
+  - Snapshot rollback testing and verification
+  - Full VM backup and restore via Proxmox
+  - Understanding storage backend capabilities
+  - Migration between storage types
 
 ## Project Status
 - Active deployment - Ongoing learning and expanision
