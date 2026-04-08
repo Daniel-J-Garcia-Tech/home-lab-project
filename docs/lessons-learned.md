@@ -384,6 +384,43 @@ qm move-disk 104 scsi0 local-lvm --format raw --delete 1
 
 ---
 
+## Challenge 13: Python Indentation and Syntax
+
+**Problem:**
+- Python script failed to run due to indentation errors
+- Vim auto-indentation conflicted with Python's whitespace requirements
+- Mixed tabs and spaces caused syntax errors
+- Coming from PowerShell (uses braces), Python's whitespace-based blocks were unfamiliar
+
+**Root Cause:**
+- Python uses indentation to define code blocks (not curly braces)
+- Standard is 4 spaces per indentation level
+- Mixing tabs and spaces causes interpreter errors
+- Vim's default tab settings didn't match Python standards
+
+**Solution:**
+1. Manually corrected indentation in vim
+2. Used consistent spacing throughout script
+3. Verified indentation matched Python standards (4 spaces)
+4. Successfully ran scripts after corrections
+
+**Lesson Learned:**
+- Python's indentation is syntactically significant (not just style)
+- Always use consistent indentation (4 spaces is standard)
+- Never mix tabs and spaces in Python
+- Text editor configuration matters for Python development
+- Vim can be configured for Python: `:set tabstop=4 shiftwidth=4 expandtab`
+- Coming from other languages requires adjusting to Python's whitespace rules
+- Attention to detail is critical in scripting
+
+**Skills Demonstrated:**
+- Debugging syntax errors
+- Understanding language-specific requirements
+- Text editor proficiency
+- Problem-solving and adaptation
+
+---
+
 ## Key Takeaways
 
 **Technical Skills Gained:**

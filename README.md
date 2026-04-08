@@ -77,6 +77,13 @@ A fully functional Active Directory deomain environment built for learning enter
   - WMI/CIM queries for system data
   - Mathematical calculations and formatting
   - Script creation and reusability
+- **Python scripting fundamentals**
+  - System information retrieval
+  - Package management validation
+  - subprocess for system commands
+  - Text processing and parsing
+  - List comprehensions and filtering
+  - Cross-platform scripting
 - Bash scripting (WiFi startup automation)
 - Network service configuration
 - systemd service creation
@@ -84,6 +91,8 @@ A fully functional Active Directory deomain environment built for learning enter
 ### Security & Maintenance
 - **Air-gapped environment configuration and verification**
 - **Network isolation enforcement (iptables NAT removal)**
+- **Network file shares with proper permissions**
+- **Share and NTFS permission management**
 - Group Policy security filtering
 - Manual security update deployment
 - Access control and permissions

@@ -733,4 +733,152 @@ and the amount of free space in volume group (16.00 GiB).
 
 ---
 
+## Network File Shares
+
+### File Server Configuration
+
+**File Server role was pre-installed on Windows Server 2025.**
+
+**Shared Folder Creation:**
+
+1. Created shared folder: `C:\SharedFiles`
+2. Configured as network share with name: `SharedFiles`
+
+**Share Permissions (Network Access):**
+- **Domain Users:** Change (Read + Write)
+- **Domain Admins:** Full Control
+
+**NTFS Permissions (File System Security):**
+- **Domain Users:** Modify
+- **Domain Admins:** Full Control (via Administrators group)
+- **SYSTEM:** Full Control (system operations)
+- **CREATOR OWNER:** Special permissions on owned files
+
+**Access Path:** `\\WIN-MMKOM79RUSR\SharedFiles` or `\\10.12.59.10\SharedFiles`
+
+---
+
+### Automated Drive Mapping via Group Policy
+
+**Created Group Policy Object for automatic network drive mapping.**
+
+**GPO Configuration:**
+
+1. **GPO Name:** Map Shared Drive
+2. **Policy Path:** User Configuration → Preferences → Windows Settings → Drive Maps
+3. **Settings:**
+   - **Action:** Create
+   - **Location:** `\\10.12.59.10\SharedFiles`
+   - **Drive Letter:** Z:
+   - **Label:** Shared Files
+   - **Reconnect:** Enabled
+
+**GPO Scope:**
+- Linked to: awsumelab.local (entire domain)
+- Applies to: All domain users
+
+**Testing:**
+- Forced Group Policy update: `gpupdate /force`
+- Logged off and back on
+- Verified Z: drive automatically mapped
+- Confirmed read/write access to shared folder
+
+**Result:** Users automatically receive mapped Z: drive pointing to shared files upon domain login.
+
+---
+
+## Python Scripting and Automation
+
+### Environment
+
+**Platform:** Ubuntu Server 24.04 (VM 104)
+**Python Version:** 3.12.3
+**Scripts Location:** `/home/labadmin/scripts/`
+
+---
+
+### Scripts Created
+
+**1. system-info.py**
+
+**Purpose:** Display system information overview
+
+**Features:**
+- Hostname identification
+- Operating system and kernel version
+- Python version
+- System uptime
+
+**Key Python Concepts:**
+- Module imports (os, platform, subprocess)
+- String formatting (f-strings)
+- Running system commands
+- Output formatting
+
+**Sample Output:**
+=== System Information ===
+Hostname: ubuntu-lab
+OS: Linux 6.8.0-107-generic
+Python: 3.12.3
+Uptime: up 24 minutes
+Script complete!
+
+---
+
+**2. check-packages.py**
+
+**Purpose:** Report on installed packages for patch validation
+
+**Features:**
+- Counts total installed packages
+- Lists last 10 installed packages
+- Shows package names and versions
+- Formatted table output
+
+**Key Python Concepts:**
+- Running dpkg commands
+- Text processing and filtering
+- List comprehensions
+- String manipulation and parsing
+
+**Sample Output:**
+=== Installed Packages Report ===
+Total packages installed: 492
+Last 10 installed packages:
+wireless-regdb                 2025.10.07-0ubuntu1~24.04.1
+xauth                          1:1.1.2-1build1
+...
+
+**Use Case:** Verify package installations in air-gapped Linux environment, similar to PowerShell's Get-HotFix for Windows.
+
+---
+
+### Python Skills Acquired
+
+**Fundamentals:**
+- Variables and data types
+- String formatting (f-strings)
+- Lists and list comprehensions
+- Conditional logic
+
+**System Administration:**
+- Running system commands (subprocess)
+- Parsing command output
+- Text processing and filtering
+- Platform-independent system queries
+
+**Script Development:**
+- Creating executable scripts (#!/usr/bin/env python3)
+- Making scripts executable (chmod +x)
+- Script organization and comments
+- Error handling basics
+
+**Best Practices:**
+- Shebang lines for portability
+- Descriptive variable names
+- Clear output formatting
+- Modular code structure
+
+---
+
 *This homelab demonstrates practical implementation of enterprise Windows infrastructure in a controlled, learning-focused environment.*
