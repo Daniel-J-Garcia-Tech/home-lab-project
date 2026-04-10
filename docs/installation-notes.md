@@ -1032,6 +1032,111 @@ ssh -i ~/.ssh/<private-key> -J root@192.168.0.243 labadmin@10.12.59.50
 
 ---
 
+## Antivirus Offline Updates
+
+### Windows Defender Definition Updates in Air-Gapped Environment
+
+**Objective:** Maintain current antivirus protection without internet connectivity.
+
+---
+
+### Update Package Acquisition
+
+**Source:** Microsoft Security Intelligence Updates
+**URL:** https://www.microsoft.com/en-us/wdsi/defenderupdates
+
+**Downloaded Package:**
+- **File:** `mpam-fe.exe` (Microsoft Protection Against Malware - Full Engine)
+- **Size:** ~200 MB
+- **Platform:** 64-bit for Windows 10/11/Server
+- **Contents:** Complete security intelligence update including:
+  - Virus and spyware definitions
+  - Anti-malware engine updates
+  - Network Inspection System signatures
+
+---
+
+### Transfer Workflow
+
+**Step 1: Download on Internet-Connected System**
+- Downloaded `mpam-fe.exe` from Microsoft's official update site
+- Verified file size and integrity
+
+**Step 2: USB Transfer to Proxmox**
+```bash
+# Mount USB drive
+mkdir -p /mnt/usb
+mount /dev/sdb1 /mnt/usb
+
+# Copy update file to VM storage
+cp /mnt/usb/mpam-fe.exe /mnt/vm-storage/
+
+# Unmount USB
+umount /mnt/usb
+```
+
+**Step 3: Create Distribution ISO**
+```bash
+genisoimage -o /mnt/vm-storage/template/iso/defender-updates.iso -J -R /mnt/vm-storage/mpam-fe.exe
+```
+
+**Step 4: Mount to Target VM**
+- Attached `defender-updates.iso` to VM 103 (Windows 10) via Proxmox web interface
+- ISO appeared as CD drive in Windows
+
+---
+
+### Installation Process
+
+**Execution:**
+1. Accessed CD drive containing `mpam-fe.exe`
+2. Double-clicked executable to run
+3. Update installed silently (10-30 seconds)
+4. No user interaction required
+
+**Verification:**
+- **Windows Security → Virus & threat protection → Protection updates**
+- Confirmed "Last updated: [Today's date]"
+- Verified definition version updated to current release
+
+**Installation Method:** Silent/automated execution
+- No restart required
+- Immediate protection update
+- Minimal disruption to user
+
+---
+
+### Production Considerations
+
+**Update Frequency:**
+- Microsoft releases definition updates multiple times daily
+- For air-gapped environments: Weekly or bi-weekly update schedule recommended
+- Critical threat updates: Deploy immediately when aware of active threats
+
+**Distribution at Scale:**
+- Current method suitable for small environments (3-10 systems)
+- Larger deployments: Use WSUS offline sync or SCCM
+- Group Policy can automate installation from network share
+
+**Alternative Update Files:**
+- **mpam-fe.exe:** Full engine and definitions (recommended for infrequent updates)
+- **mpam-d.exe:** Definitions only (smaller, for frequent updates)
+- **mpam-fex64.exe:** Emergency definitions (minimal size, critical threats only)
+
+---
+
+### Best Practices Demonstrated
+
+✅ **Regular update schedule** even in air-gapped environment  
+✅ **Official sources** for security updates  
+✅ **Verification** of successful installation  
+✅ **Documentation** of update process  
+✅ **Minimal disruption** to end users  
+
+**Result:** Air-gapped systems maintain current antivirus protection through systematic offline update workflow.
+
+---
+
 ### Troubleshooting Notes
 
 **Issue: Ubuntu VM Lost DHCP Address**

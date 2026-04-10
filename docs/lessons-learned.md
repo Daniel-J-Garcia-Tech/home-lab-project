@@ -515,6 +515,52 @@ ProxyJump proxmox
 
 ---
 
+## Challenge 16: Antivirus Updates in Air-Gapped Environment
+
+**Problem:**
+- Windows Defender requires regular definition updates for effective protection
+- Air-gapped VMs have no internet connectivity
+- Automatic updates via Windows Update not available
+- Security protection becomes outdated without manual intervention
+
+**Root Cause:**
+- Windows Defender designed for internet-connected systems
+- Automatic update mechanism relies on Microsoft Update servers
+- Air-gapped design prevents direct download of definitions
+- No built-in offline update distribution mechanism
+
+**Solution:**
+- Downloaded definition package (`mpam-fe.exe`) from Microsoft's official site on internet-connected PC
+- Transferred via USB to Proxmox host
+- Created ISO distribution package for VM deployment
+- Mounted ISO to Windows 10 VM
+- Executed update package manually
+- Verified installation via Windows Security interface
+
+**Update Workflow:**
+1. Download → USB → Proxmox → ISO → VM → Execute
+2. Same pattern used for other offline deployments
+3. Reusable process for regular update cycles
+
+**Lesson Learned:**
+- Air-gapped doesn't mean unprotected - requires different update methodology
+- Microsoft provides offline update packages for disconnected environments
+- ISO distribution method works for any executable/installer
+- Silent installation requires no user interaction
+- Update verification is critical to confirm protection currency
+- Pattern recognition: Same workflow applies to multiple offline update scenarios
+- Regular schedule needed - cannot rely on automatic updates
+
+**Skills Demonstrated:**
+- Offline antivirus management
+- Security update deployment in isolated environments
+- Multi-stage file transfer workflow
+- ISO creation and distribution
+- Verification of security updates
+- Understanding of Windows Defender architecture
+
+---
+
 ## Key Takeaways
 
 **Technical Skills Gained:**

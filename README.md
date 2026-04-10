@@ -98,6 +98,7 @@ A fully functional Active Directory deomain environment built for learning enter
 - **Password authentication disabled (security hardening)**
 - **SSH configuration files for streamlined access**
 - **ProxyJump configuration for network segmentation**
+- **Offline antivirus definition updates (Windows Defender)**
 - Network file shares with proper permissions
 - Share and NTFS permission management
 - Group Policy security filtering
