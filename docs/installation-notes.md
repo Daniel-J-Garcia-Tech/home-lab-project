@@ -881,4 +881,177 @@ xauth                          1:1.1.2-1build1
 
 ---
 
+## SSH Key-Based Authentication and Security Hardening
+
+### SSH Key Generation
+
+**Generated Ed25519 key pair on main PC for secure authentication.**
+
+**Key Generation Process:**
+
+```bash
+ssh-keygen
+```
+
+**Configuration:**
+- **Key Type:** Ed25519 (modern, more secure than RSA)
+- **Key Location:** `~/.ssh/` (custom filename for security)
+- **Passphrase:** Configured (two-factor authentication: key file + passphrase)
+- **Files Created:**
+  - Private key: Stored securely on main PC (never shared)
+  - Public key (.pub): Distributed to servers
+
+**Security Note:** Ed25519 provides stronger security with smaller key sizes compared to traditional RSA keys.
+
+---
+
+### Public Key Distribution
+
+**Proxmox Host:**
+
+**Method:** Direct SCP transfer from main PC
+
+```bash
+cd ~/.ssh
+scp -i  .pub root@192.168.0.243:/tmp/
+```
+
+**Then copied to authorized_keys:**
+```bash
+cat /tmp/.pub >> ~/.ssh/authorized_keys
+```
+
+**Note:** Proxmox uses symbolic link: `~/.ssh/authorized_keys -> /etc/pve/priv/authorized_keys`
+
+---
+
+**Ubuntu VM (via Proxmox jump host):**
+
+**Method:** Two-step transfer (main PC → Proxmox → Ubuntu)
+
+1. Transferred public key to Proxmox /tmp directory
+2. From Proxmox, used manual method to add key to Ubuntu:
+
+```bash
+cat /tmp/.pub | ssh labadmin@10.12.59.50 "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
+```
+
+**Challenge:** Direct transfer from main PC not possible due to network segmentation (ProxyJump required).
+
+---
+
+### SSH Configuration File Setup
+
+**Created SSH config file for simplified connections.**
+
+**Location:** `~/.ssh/config` (Windows: `C:\Users\<username>\.ssh\config`)
+
+**CRITICAL:** File must be named exactly `config` with NO extension
+- Notepad defaults to `.txt` extension
+- Must save as "All Files (*.*)" or rename after creation
+
+**Configuration:**
+Host proxmox
+HostName 192.168.0.243
+User root
+IdentityFile ~/.ssh/<private-key>
+Host linux
+HostName 10.12.59.50
+User labadmin
+IdentityFile ~/.ssh/<private-key>
+ProxyJump proxmox
+
+**Benefits:**
+- Simple commands: `ssh proxmox` or `ssh linux`
+- Automatic ProxyJump configuration for Ubuntu access
+- No need to remember full connection strings
+- Consistent key usage across connections
+
+---
+
+### Password Authentication Disabled (Security Hardening)
+
+**Disabled password-based SSH authentication on both servers for enhanced security.**
+
+**Process (applied to both Proxmox and Ubuntu):**
+
+1. Edited SSH server configuration:
+```bash
+nano /etc/ssh/sshd_config  # or vim on Ubuntu
+```
+
+2. Modified PasswordAuthentication setting:
+Changed from:
+#PasswordAuthentication yes
+To:
+PasswordAuthentication no
+
+3. Restarted SSH service:
+```bash
+systemctl restart sshd
+```
+
+4. Verified configuration before closing existing session (safety measure)
+
+**Security Benefits:**
+- Eliminates brute-force password attacks
+- Requires possession of private key file
+- Requires knowledge of key passphrase (two-factor authentication)
+- Industry standard for production server security
+
+**Result:** SSH access now requires:
+1. Private key file (something you HAVE)
+2. Key passphrase (something you KNOW)
+3. Password authentication completely disabled
+
+---
+
+### Connection Testing and Verification
+
+**Proxmox Connection:**
+```bash
+ssh proxmox
+```
+- Prompts for key passphrase
+- Authenticates via public key
+- No password required
+
+**Ubuntu Connection (via ProxyJump):**
+```bash
+ssh linux
+```
+- Single passphrase prompt
+- Automatically jumps through Proxmox
+- Lands directly on Ubuntu VM
+- Network segmentation transparent to user
+
+**Long-form command (without config file):**
+```bash
+ssh -i ~/.ssh/<private-key> -J root@192.168.0.243 labadmin@10.12.59.50
+```
+
+---
+
+### Troubleshooting Notes
+
+**Issue: Ubuntu VM Lost DHCP Address**
+- **Cause:** DHCP server (Domain Controller) was powered off
+- **Solution:** Started DC VM, restarted networking on Ubuntu
+- **Lesson:** DHCP-dependent systems require DHCP server availability
+
+**Issue: SSH Config File Not Working**
+- **Cause:** Notepad saved file as `config.txt` instead of `config`
+- **Symptom:** SSH used defaults instead of custom config
+- **Solution:** Renamed file to remove `.txt` extension
+- **Prevention:** Save as "All Files" type in Notepad, or use quotes around filename
+
+**Issue: File Permissions on authorized_keys**
+- **Requirement:** SSH requires specific permissions on key files
+- **Correct permissions:** 
+  - `~/.ssh/` directory: 700 (drwx------)
+  - `authorized_keys` file: 600 (-rw-------)
+- **Proxmox specific:** Uses symlink to `/etc/pve/priv/authorized_keys`
+
+---
+
 *This homelab demonstrates practical implementation of enterprise Windows infrastructure in a controlled, learning-focused environment.*

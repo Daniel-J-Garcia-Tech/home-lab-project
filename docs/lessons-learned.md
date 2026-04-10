@@ -421,6 +421,100 @@ qm move-disk 104 scsi0 local-lvm --format raw --delete 1
 
 ---
 
+## Challenge 14: SSH Configuration File Extension Issue
+
+**Problem:**
+- Created SSH config file using Notepad
+- SSH continued using default settings instead of custom configuration
+- Commands like `ssh proxmox` failed with "no such host" error
+- Manual ssh commands with full parameters worked fine
+
+**Root Cause:**
+- Notepad automatically added `.txt` extension when saving
+- File was saved as `config.txt` instead of `config`
+- SSH client specifically looks for file named `config` (no extension)
+- Windows hides file extensions by default, making issue invisible
+
+**Diagnosis Process:**
+1. Verified config file syntax was correct
+2. Used `ssh -G proxmox` to check what SSH was reading
+3. Output showed defaults (user danny, hostname proxmox) instead of config values
+4. Discovered file was `config.txt` when checking with `ls ~/.ssh/config.txt`
+
+**Solution:**
+- Renamed file from `config.txt` to `config`:
+```bash
+mv ~/.ssh/config.txt ~/.ssh/config
+```
+- Verified SSH now reads custom configuration
+- Config shortcuts (`ssh proxmox`, `ssh linux`) immediately worked
+
+**Lesson Learned:**
+- SSH is strict about configuration file naming conventions
+- Notepad defaults to adding `.txt` extension
+- Always verify file has no extension when creating SSH config
+- Save as "All Files (*.*)" in Notepad or use quotes around filename
+- `ssh -G <host>` is invaluable for debugging config issues
+- File extensions matter in *nix-based tools, even on Windows
+- Don't assume tools will "figure out" what you meant
+
+**Prevention:**
+- When using Notepad for SSH config, explicitly select "All Files (*.*)" as file type
+- OR use text editors that respect exact filenames (VSCode, Notepad++, vim)
+- Verify file after creation with `ls` command
+
+---
+
+## Challenge 15: Network Segmentation and SSH ProxyJump
+
+**Problem:**
+- Main PC (192.168.0.x network) could not directly SSH to Ubuntu VM (10.12.59.x network)
+- Simple `ssh labadmin@10.12.59.50` timed out
+- Needed secure access to internal VM from external workstation
+
+**Root Cause:**
+- Network topology created deliberate segmentation:
+  - Main PC on home WiFi network (192.168.0.x)
+  - Proxmox accessible on both networks (192.168.0.243)
+  - VMs on internal bridge network (10.12.59.x)
+- No direct routing between 192.168.0.x and 10.12.59.x
+- By design for air-gapped security
+
+**Solution:**
+- Used SSH ProxyJump feature to route through Proxmox:
+```bash
+ssh -i ~/.ssh/ -J root@192.168.0.243 labadmin@10.12.59.50
+```
+- Configured in SSH config file for automation:
+Host linux
+HostName 10.12.59.50
+User labadmin
+IdentityFile ~/.ssh/<key>
+ProxyJump proxmox
+
+**How ProxyJump Works:**
+1. SSH connects to Proxmox (jump host) first
+2. From Proxmox, establishes second SSH connection to Ubuntu
+3. Creates encrypted tunnel: Main PC → Proxmox → Ubuntu
+4. User only enters passphrase once
+5. Appears as single connection to end user
+
+**Lesson Learned:**
+- ProxyJump (or SSH bastion hosts) are standard in segmented networks
+- Network security often requires jump hosts for internal access
+- SSH config file can make complex multi-hop connections simple
+- Understanding network topology is essential for troubleshooting
+- Single passphrase prompt for multi-hop connection improves UX
+- This pattern is common in enterprise environments with DMZ architecture
+
+**Real-World Application:**
+- Jump hosts/bastion hosts in production environments
+- Accessing internal networks from internet
+- Maintaining security boundaries while enabling access
+- Common in cloud environments (AWS, Azure) with private subnets
+
+---
+
 ## Key Takeaways
 
 **Technical Skills Gained:**

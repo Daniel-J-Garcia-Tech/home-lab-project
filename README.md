@@ -31,6 +31,8 @@ A fully functional Active Directory deomain environment built for learning enter
 - Air-gapped network design
 - NAT configuration (and removal for isolation)
 - Network segmentation and routing
+- **SSH jump host / bastion host configuration**
+- **ProxyJump for multi-hop SSH connections**
 
 ### Remote Access
 - Remote Desktop Services (RDS)
@@ -91,8 +93,13 @@ A fully functional Active Directory deomain environment built for learning enter
 ### Security & Maintenance
 - **Air-gapped environment configuration and verification**
 - **Network isolation enforcement (iptables NAT removal)**
-- **Network file shares with proper permissions**
-- **Share and NTFS permission management**
+- **SSH key-based authentication (Ed25519)**
+- **SSH passphrase-protected keys (two-factor authentication)**
+- **Password authentication disabled (security hardening)**
+- **SSH configuration files for streamlined access**
+- **ProxyJump configuration for network segmentation**
+- Network file shares with proper permissions
+- Share and NTFS permission management
 - Group Policy security filtering
 - Manual security update deployment
 - Access control and permissions
