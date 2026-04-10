@@ -108,6 +108,8 @@ qm create 102 \
 4. Post-install: Ran virtio-win-gt-x64.msi for additional drivers
 5. Configured static IP manually
 
+---
+
 ### Windows 10 Client
 
 **Created via Web Interface:**
@@ -118,7 +120,7 @@ qm create 102 \
 - CPU: 2 cores
 - Disk: 60GB (VirtIO SCSI)
 - Network: VirtIO on vmbr0
-- DHCP assigned IP (later: 10.12.59.x from DHCP scope)
+- DHCP assigned IP (later: 10.x.x.x from DHCP scope)
 
 **Installation Steps:**
 1. Booted from Windows 10 IoT Enterprise LTSC ISO
@@ -384,11 +386,11 @@ qm create 104 \
 - Network: VirtIO on vmbr0
 - OS: Ubuntu Server 24.04.4 LTS (minimized installation)
 - Hostname: ubuntu-lab
-- User: labadmin
+- User: -----
 
 **Installation Process:**
 - Selected Ubuntu Server (minimized) for minimal footprint
-- Configured DHCP networking (IP from DC: 10.12.59.50)
+- Configured DHCP networking (IP from DC: 10.x.x.x)
 - Installed OpenSSH server for remote management
 - Skipped Ubuntu Pro subscription
 - Created local administrator account
@@ -404,9 +406,10 @@ qm create 104 \
 **Purpose:** Enable air-gapped package management for Linux systems
 
 **Repository Structure:**
-/var/local-repo/
+```/var/local-repo/
 ├── debs/           # Package files (.deb)
 └── Packages        # Repository index metadata
+```
 
 **Implementation Steps:**
 
@@ -465,14 +468,14 @@ Verified package installed from `file:/var/local-repo`
 
 1. **Removed active NAT rule:**
 ```bash
-iptables-legacy -t nat -D POSTROUTING -s '10.12.59.0/24' -o wlp4s0 -j MASQUERADE
+iptables-legacy -t nat -D POSTROUTING -s '10.x.x.x/24' -o wlp4s0 -j MASQUERADE
 ```
 
 2. **Prevented recreation on reboot:**
 Commented out NAT rules in `/etc/network/interfaces`:
 ```bash
-#    post-up iptables -t nat -A POSTROUTING -s '10.12.59.0/24' -o wlp4s0 -j MASQUERADE
-#    post-down iptables -t nat -D POSTROUTING -s '10.12.59.0/24' -o wlp4s0 -j MASQUERADE
+#    post-up iptables -t nat -A POSTROUTING -s '10.x.x.x/24' -o wlp4s0 -j MASQUERADE
+#    post-down iptables -t nat -D POSTROUTING -s '10.x.x.x/24' -o wlp4s0 -j MASQUERADE
 ```
 
 3. **Verification Testing:**
@@ -754,7 +757,7 @@ and the amount of free space in volume group (16.00 GiB).
 - **SYSTEM:** Full Control (system operations)
 - **CREATOR OWNER:** Special permissions on owned files
 
-**Access Path:** `\\WIN-MMKOM79RUSR\SharedFiles` or `\\10.12.59.10\SharedFiles`
+**Access Path:** `\\WIN-MMKOM79RUSR\SharedFiles` or `\\10.x.x.x\SharedFiles`
 
 ---
 
@@ -768,13 +771,13 @@ and the amount of free space in volume group (16.00 GiB).
 2. **Policy Path:** User Configuration → Preferences → Windows Settings → Drive Maps
 3. **Settings:**
    - **Action:** Create
-   - **Location:** `\\10.12.59.10\SharedFiles`
+   - **Location:** `\\10.x.x.x\SharedFiles`
    - **Drive Letter:** Z:
    - **Label:** Shared Files
    - **Reconnect:** Enabled
 
 **GPO Scope:**
-- Linked to: awsumelab.local (entire domain)
+- Linked to: lab.local (entire domain)
 - Applies to: All domain users
 
 **Testing:**
@@ -793,7 +796,7 @@ and the amount of free space in volume group (16.00 GiB).
 
 **Platform:** Ubuntu Server 24.04 (VM 104)
 **Python Version:** 3.12.3
-**Scripts Location:** `/home/labadmin/scripts/`
+**Scripts Location:** `/home/------/scripts/`
 
 ---
 
@@ -913,7 +916,7 @@ ssh-keygen
 
 ```bash
 cd ~/.ssh
-scp -i  .pub root@192.168.0.243:/tmp/
+scp -i  .pub ----@192.x.x.x:/tmp/
 ```
 
 **Then copied to authorized_keys:**
@@ -933,7 +936,7 @@ cat /tmp/.pub >> ~/.ssh/authorized_keys
 2. From Proxmox, used manual method to add key to Ubuntu:
 
 ```bash
-cat /tmp/.pub | ssh labadmin@10.12.59.50 "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
+cat /tmp/.pub | ssh -----@10.x.x.x "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
 ```
 
 **Challenge:** Direct transfer from main PC not possible due to network segmentation (ProxyJump required).
@@ -952,12 +955,12 @@ cat /tmp/.pub | ssh labadmin@10.12.59.50 "mkdir -p ~/.ssh && cat >> ~/.ssh/autho
 
 **Configuration:**
 Host proxmox
-HostName 192.168.0.243
-User root
+HostName 192.x.x.x
+User ----
 IdentityFile ~/.ssh/<private-key>
 Host linux
-HostName 10.12.59.50
-User labadmin
+HostName 10.x.x.x
+User ------
 IdentityFile ~/.ssh/<private-key>
 ProxyJump proxmox
 
@@ -1027,7 +1030,7 @@ ssh linux
 
 **Long-form command (without config file):**
 ```bash
-ssh -i ~/.ssh/<private-key> -J root@192.168.0.243 labadmin@10.12.59.50
+ssh -i ~/.ssh/<private-key> -J ----@192.x.x.x ------@10.x.x.x
 ```
 
 ---
@@ -1144,7 +1147,7 @@ genisoimage -o /mnt/vm-storage/template/iso/defender-updates.iso -J -R /mnt/vm-s
 **Created comprehensive security Group Policy Object for enterprise-grade security controls.**
 
 **GPO Name:** Security Policies  
-**Scope:** Linked to awsumelab.local domain (applies to all users and computers)  
+**Scope:** Linked to lab.local domain (applies to all users and computers)  
 **Purpose:** Enforce password complexity, account lockout protection, and comprehensive audit logging
 
 ---
@@ -1242,7 +1245,7 @@ genisoimage -o /mnt/vm-storage/template/iso/defender-updates.iso -J -R /mnt/vm-s
 ### GPO Application and Scope
 
 **Deployment:**
-- GPO linked to domain root (awsumelab.local)
+- GPO linked to domain root (lab.local)
 - Applies to: All domain users and computers
 - Application: Computer policies apply on boot; User policies apply on login
 - Refresh interval: 90 minutes (default) or on demand via `gpupdate /force`

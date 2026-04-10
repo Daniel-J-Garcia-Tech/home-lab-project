@@ -134,7 +134,7 @@ This document captures key challenges, solutions, and insights gained during the
 
 **Solution:**
 - Implemented NAT-based networking instead
-- Created isolated internal network (10.12.59.0/24)
+- Created isolated internal network (10.x.x.x/24)
 - Used iptables MASQUERADE for internet access (later disabled for air-gap)
 - VMs communicate through virtual bridge, NAT translates to WiFi when needed
 
@@ -269,22 +269,22 @@ sudo apt install tree
 ## Challenge 10: SSH Access Between Network Segments
 
 **Problem:**
-- Main PC (192.168.0.x network) couldn't directly SSH to Ubuntu VM (10.12.59.x network)
+- Main PC (192.x.x.x network) couldn't directly SSH to Ubuntu VM (10.x.x.x network)
 - Connection timeout errors despite SSH service running
 - Different subnets with no direct routing
 
 **Root Cause:**
 - Network topology: Main PC and VMs on different networks
-- Main PC → Home WiFi (192.168.0.x)
+- Main PC → Home WiFi (192.x.x.x)
 - Proxmox → WiFi + Internal bridge (vmbr0)
-- VMs → Internal network only (10.12.59.x)
-- No route exists between 192.168.0.x and 10.12.59.x
+- VMs → Internal network only (10.x.x.x)
+- No route exists between 192.x.x.x and 10.x.x.x
 
 **Solution:**
 - Used SSH jump/proxy through Proxmox host
 - Two-hop connection: Main PC → Proxmox → Ubuntu VM
 - Manual method: SSH to Proxmox, then SSH to VM
-- Alternative: `ssh -J root@192.168.0.243 labadmin@10.12.59.50` (ProxyJump)
+- Alternative: `ssh -J ----@192.x.x.x --------@10.x.x.x` (ProxyJump)
 
 **Lesson Learned:**
 - Network segmentation requires understanding routing paths
@@ -313,13 +313,13 @@ sudo apt install tree
 **Solution:**
 1. Removed active NAT rule from iptables:
 ```bash
-iptables-legacy -t nat -D POSTROUTING -s '10.12.59.0/24' -o wlp4s0 -j MASQUERADE
+iptables-legacy -t nat -D POSTROUTING -s '10.x.x.x/24' -o wlp4s0 -j MASQUERADE
 ```
 
 2. Commented out (preserved for future re-enable if needed) NAT rules in `/etc/network/interfaces`:
 ```bash
-#    post-up iptables -t nat -A POSTROUTING -s '10.12.59.0/24' -o wlp4s0 -j MASQUERADE
-#    post-down iptables -t nat -D POSTROUTING -s '10.12.59.0/24' -o wlp4s0 -j MASQUERADE
+#    post-up iptables -t nat -A POSTROUTING -s '10.x.x.x/24' -o wlp4s0 -j MASQUERADE
+#    post-down iptables -t nat -D POSTROUTING -s '10.x.x.x/24' -o wlp4s0 -j MASQUERADE
 ```
 
 3. Verified air-gap on all three VMs:
@@ -468,27 +468,27 @@ mv ~/.ssh/config.txt ~/.ssh/config
 ## Challenge 15: Network Segmentation and SSH ProxyJump
 
 **Problem:**
-- Main PC (192.168.0.x network) could not directly SSH to Ubuntu VM (10.12.59.x network)
-- Simple `ssh labadmin@10.12.59.50` timed out
+- Main PC (192.x.x.x network) could not directly SSH to Ubuntu VM (10.x.x.x network)
+- Simple `ssh -----@10.x.x.x` timed out
 - Needed secure access to internal VM from external workstation
 
 **Root Cause:**
 - Network topology created deliberate segmentation:
-  - Main PC on home WiFi network (192.168.0.x)
-  - Proxmox accessible on both networks (192.168.0.243)
-  - VMs on internal bridge network (10.12.59.x)
-- No direct routing between 192.168.0.x and 10.12.59.x
+  - Main PC on home WiFi network (192.x.x.x)
+  - Proxmox accessible on both networks (192.x.x.x)
+  - VMs on internal bridge network (10.x.x.x)
+- No direct routing between 192.x.x.x and 10.x.x.x
 - By design for air-gapped security
 
 **Solution:**
 - Used SSH ProxyJump feature to route through Proxmox:
 ```bash
-ssh -i ~/.ssh/ -J root@192.168.0.243 labadmin@10.12.59.50
+ssh -i ~/.ssh/ -J ----@192.x.0.x -----@10.x.x.x
 ```
 - Configured in SSH config file for automation:
 Host linux
-HostName 10.12.59.50
-User labadmin
+HostName 10.x.x.x
+User -----
 IdentityFile ~/.ssh/<key>
 ProxyJump proxmox
 
@@ -637,25 +637,138 @@ ProxyJump proxmox
 ## Key Takeaways
 
 **Technical Skills Gained:**
-- Linux system administration (systemd, networking, services)
-- Windows Server infrastructure (AD DS, DHCP, DNS, RDS)
-- Virtualization best practices (Proxmox, VirtIO, resource allocation)
-- Network design (NAT, bridging, air-gapped architectures)
-- Security hardening (GPO, offline patching, isolation)
+
+**Infrastructure & Virtualization:**
+- Proxmox VE administration and VM lifecycle management
+- Storage architecture (LVM-thin vs directory storage, migration strategies)
+- Air-gapped network design and enforcement
+- Network segmentation and routing (NAT, bridging, ProxyJump)
+- Snapshot and backup procedures (instant snapshots, vzdump full backups)
+- Disaster recovery testing and verification
+
+**Windows Server Administration:**
+- Active Directory Domain Services (AD DS) deployment and management
+- Group Policy Objects (desktop customization, security policies, drive mapping, Windows Update control)
+- DHCP and DNS server configuration
+- Remote Desktop Services (session-based deployment)
+- WSUS installation (understanding air-gapped limitations)
+- Offline Windows patching workflow (manual .msu deployment)
+- Windows Defender offline definition updates
+- NTFS and share permission management
+
+**Linux System Administration:**
+- Ubuntu Server installation and configuration
+- Package management (apt, dpkg, dependency resolution)
+- Offline APT repository creation (apt-ftparchive)
+- SSH server hardening (key-based authentication, password auth disabled)
+- SSH configuration files and ProxyJump for multi-hop connections
+- systemd service management
+- System monitoring and log analysis
+
+**Security & Hardening:**
+- Enterprise password policies (length, complexity, history, modern best practices)
+- Account lockout policies (brute-force prevention)
+- Comprehensive audit policies (strategic event logging)
+- SSH key-based authentication with passphrase (two-factor)
+- Air-gap verification and enforcement
+- Security vs. usability tradeoff analysis
+- Modern security standards (NIST guidelines, passphrase support)
+
+**Scripting & Automation:**
+- PowerShell scripting (system health checks, patch verification)
+- Python scripting (system information, package validation)
+- Bash scripting (network automation)
+- Cross-platform scripting concepts
+- Understanding code structure and logic (not just copy-paste)
+
+**Troubleshooting & Problem-Solving:**
+- Systematic diagnostic methodology
+- Root cause analysis
+- Network connectivity troubleshooting (DNS, DHCP, routing)
+- Permission and authentication issues
+- Storage and file system problems
+- SSH connection debugging
+- Configuration file syntax and formatting
+
+---
 
 **Soft Skills Developed:**
-- Systematic troubleshooting methodology
-- Reading and interpreting technical documentation
-- Persistence through complex problems
-- Learning from failures
-- Documenting solutions for future reference
+
+**Technical Communication:**
+- Professional documentation writing
+- Clear problem description and solution documentation
+- GitHub repository management and presentation
+- Technical concept explanation for different audiences
+
+**Learning & Adaptability:**
+- Self-directed learning from documentation
+- Adapting to tool limitations (WSUS in air-gap, file naming conventions)
+- Learning multiple scripting languages simultaneously
+- Understanding when to ask for help vs. troubleshooting independently
+
+**Critical Thinking:**
+- Security vs. usability tradeoff analysis
+- Resource constraint management (RAM, storage, log volume)
+- Design decision justification
+- Recognizing patterns across different technologies
+
+**Persistence & Resilience:**
+- Working through 17 documented challenges
+- Debugging complex multi-layer issues
+- Not giving up when solutions aren't obvious
+- Learning from failures and misconfigurations
+
+---
 
 **Professional Growth:**
-- Understanding enterprise IT infrastructure
-- Appreciation for proper change management
-- Recognition of security vs. usability tradeoffs
-- Value of testing in non-production environments
 
+**Enterprise IT Understanding:**
+- Air-gapped environments require different approaches than connected systems
+- Offline patch management is complex but achievable
+- Security policies must balance protection with productivity
+- Help desk burden impacts policy decisions (e.g., auto-unlock vs. manual)
+- Tools designed for internet connectivity don't always translate to air-gapped use
+
+**Change Management & Testing:**
+- Snapshot before making changes (safety net)
+- Test in non-production before domain-wide deployment
+- Document configuration changes for rollback capability
+- Verify changes work before closing maintenance window
+
+**Security Philosophy:**
+- Defense in depth (multiple layers of security)
+- Modern password research contradicts traditional practices
+- Long, complex passwords changed infrequently > short passwords changed often
+- Audit logging must be strategic (signal vs. noise)
+- Disabling unnecessary services reduces attack surface
+- Security controls that prevent work get bypassed by users
+
+**Real-World Operational Considerations:**
+- User experience matters (30-min auto-unlock reduces help desk calls)
+- Log storage constraints require strategic choices
+- Network topology affects troubleshooting approach
+- File naming conventions matter in cross-platform environments
+- Tool compatibility varies across operating systems
+- "Perfect" security that prevents productivity isn't actually secure
+
+---
+
+**Key Lessons Learned:**
+
+1. **Air-gapped ≠ Unmanageable** - Requires different processes, not impossible processes
+2. **Dependencies are everything** - In packages, network routing, service startup
+3. **Test assumptions** - Don't assume internet is blocked; verify
+4. **Documentation is insurance** - Future you will thank present you
+5. **Understand the "why"** - Not just "how" but "why this approach"
+6. **Failure teaches more than success** - 17 challenges = 17 learning opportunities
+7. **Tools have limitations** - Not every enterprise tool works in every environment
+8. **Context matters** - Same command behaves differently across systems
+9. **Security is a balance** - Absolute security prevents productivity
+10. **Ask questions** - Understanding beats memorization
+
+---
+
+**Most importantly:** This project proves the ability to learn, adapt, troubleshoot, and deliver results in complex technical environments.
 ---
 
 *This homelab project provided hands-on experience that supplements theoretical knowledge and demonstrates practical problem-solving abilities.*

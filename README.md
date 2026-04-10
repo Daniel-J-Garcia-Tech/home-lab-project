@@ -1,20 +1,24 @@
 # Active Directory Homelab Project
 
-**Note**
-I've also added a Cisco Labs folder that includes a 7 step lab process with Cisco Packet Tracer. Each lab build on skills to eventually reach the final Lab 7 Capstone Project. For more detailed explaining please view README in that folder
+> **Note:** This repository also includes a Cisco Labs folder with a 7-step lab progression using Cisco Packet Tracer, culminating in a capstone project. See the Cisco Labs README for details.
 
-**Overview**
-A fully functional Active Directory deomain environment built for learning enterprise
+## Overview
+
+A comprehensive enterprise IT infrastructure homelab built from scratch to demonstrate system administration, security hardening, and patch management skills in air-gapped environments. 
+This project showcases hands-on experience with Windows Server, Linux administration, virtualization, scripting, and modern security best practices.
+
+Built to meet the technical requirements for Air-Gapped Systems Administrator positions, with emphasis on offline patch management, backup/recovery procedures, and enterprise security configuration.
 
 ## Environment Architecture
 
 **Hardware:**
-- Host ROG Laptop (Intell i7-7700HQ, 16GB RAM)
+- Host ROG Laptop (Intel i7-7700HQ, 16GB RAM)
 - Hypervisor: Proxmox VE 9.1
 
-**Virtual Hardware:**
-- Windows Server 2025 (Domain Controller)
-- Windows 10 IoT Enterprise LTSC (Domain-joined client)
+**Virtual Machines:**
+- Windows Server 2025 Datacenter (Domain Controller) - 8GB RAM, 100GB storage
+- Windows 10 IoT Enterprise LTSC (Domain-joined client) - 4GB RAM, 60GB storage
+- Ubuntu Server 24.04 LTS (Linux infrastructure) - 2GB RAM, 20GB storage
 
 ## Technologies & Skills Demonstrated
 
@@ -94,6 +98,8 @@ A fully functional Active Directory deomain environment built for learning enter
 - Network service configuration
 - systemd service creation
 
+**All automation scripts with detailed documentation are available in [/scripts](/scripts).**
+
 ### Security & Maintenance
 - **Air-gapped environment configuration and verification**
 - **Network isolation enforcement (iptables NAT removal)**
@@ -115,41 +121,39 @@ A fully functional Active Directory deomain environment built for learning enter
 - Firewall configuration
 
 ## Key Learning Outcomes
-- Enterprise AD domain administration
-- Windows Server infrastructure management
-- Linux system administration fundamentals
-- Network services configuration
-- Security best practices in isolated environments
-- Troubleshooting and problem-solving
-- Air-gapped patch management for both Windows and Linux
-- Offline repository creation and maintenance
-- **Backup and disaster recovery procedures**
-  - VM snapshots on LVM-thin storage
-  - Snapshot rollback testing and verification
-  - Full VM backup and restore via Proxmox
-  - Understanding storage backend capabilities
-  - Migration between storage types
+
+**Infrastructure & Administration:**
+- Enterprise Active Directory domain deployment and management
+- Windows Server 2025 infrastructure configuration
+- Linux system administration (Ubuntu Server 24.04)
+- Proxmox virtualization platform administration
+
+**Security & Hardening:**
+- Air-gapped environment design and enforcement
+- SSH key-based authentication with two-factor (key + passphrase)
+- Enterprise security policies (password, lockout, audit)
+- Modern security best practices (NIST guidelines)
+
+**Patch Management:**
+- Offline Windows update deployment (air-gapped workflow)
+- Offline Linux package management (manual .deb installation)
+- Offline repository creation (APT repository for Ubuntu)
+- Antivirus definition updates in isolated environments
+
+**Backup & Recovery:**
+- VM snapshot procedures (LVM-thin storage)
+- Snapshot rollback testing and verification
+- Full VM backup and restore operations
+- Storage migration and disaster recovery
+
+**Scripting & Automation:**
+- PowerShell scripting (system monitoring, patch verification)
+- Python scripting (system information, package validation)
+- Bash scripting (network automation)
+- Cross-platform automation skills
 
 ## Project Status
-- Active deployment - Ongoing learning and expanision
-
-# Scripts
-
-This directory contains automation scripts and configuration files created during the homelab project.
-
-## wpa_supplicant_startup.sh
-
-**Purpose:** Systemd service configuration for auto-starting WiFi on Proxmox host at boot.
-
-**Problem Solved:** WiFi adapter (Intel iwlwifi) failed to initialize properly during boot sequence, causing network unavailability.
-
-**Implementation:** Created custom systemd service to ensure wpa_supplicant starts with correct timing and parameters.
-
-**Skills Demonstrated:**
-- Linux systemd service creation
-- Network service troubleshooting
-- Startup order management
-- WiFi authentication configuration
+- Active deployment - Ongoing learning and expansion
 
 ---
 *This is a personal learning project for IT skill development.*
