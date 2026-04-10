@@ -1137,6 +1137,131 @@ genisoimage -o /mnt/vm-storage/template/iso/defender-updates.iso -J -R /mnt/vm-s
 
 ---
 
+## Additional Security Group Policies
+
+### Security Policies GPO Configuration
+
+**Created comprehensive security Group Policy Object for enterprise-grade security controls.**
+
+**GPO Name:** Security Policies  
+**Scope:** Linked to awsumelab.local domain (applies to all users and computers)  
+**Purpose:** Enforce password complexity, account lockout protection, and comprehensive audit logging
+
+---
+
+### Password Policy Configuration
+
+**Configured to balance security with usability while meeting modern security standards.**
+
+**Settings:**
+
+| Setting | Value | Rationale |
+|---------|-------|-----------|
+| **Minimum password length** | 12 characters | Modern industry standard; exponentially more secure than traditional 8-character minimum; NIST recommended |
+| **Password must meet complexity** | Enabled | Requires mix of uppercase, lowercase, numbers, symbols; prevents simple passwords |
+| **Enforce password history** | 5 passwords | Prevents reuse of old passwords; 5-year retention aligns with compliance standards |
+| **Maximum password age** | 365 days | Annual password change balances security with usability; reduces password fatigue |
+| **Minimum password age** | 1 day | Prevents rapid password cycling to bypass history requirement |
+| **Relax minimum password length limits** | Enabled | Allows passphrases up to 127 characters; supports modern authentication methods |
+| **Store passwords using reversible encryption** | Disabled | Security best practice; passwords stored as one-way hashes only |
+
+**Security Philosophy:**
+- Long, complex passwords changed infrequently (365 days) are more secure than short passwords changed frequently
+- Users invest time in creating one strong password they can remember
+- Passphrase support enables highly secure, memorable passwords (e.g., "Coffee And Dogs Make Me Happy 2024!")
+- Reduces password reuse and written-down passwords
+
+---
+
+### Account Lockout Policy Configuration
+
+**Configured to prevent brute-force attacks while minimizing user lockouts and help desk burden.**
+
+**Settings:**
+
+| Setting | Value | Rationale |
+|---------|-------|-----------|
+| **Account lockout threshold** | 4 invalid attempts | Allows for user typos while stopping brute-force attacks; balanced approach |
+| **Account lockout duration** | 30 minutes | Auto-unlock reduces help desk calls; still significantly slows attackers (4 attempts per 30 min) |
+| **Reset account lockout counter** | 30 minutes | Clears failed attempt counter after 30 minutes of no activity |
+| **Allow administrator account lockout** | Enabled | Modern best practice; prevents unlimited brute-force attempts on built-in admin account |
+
+**Attack Prevention:**
+- Attacker limited to 4 password guesses per 30 minutes
+- At this rate, testing even 1,000 passwords would take 125+ hours
+- Makes brute-force attacks impractical
+
+**Usability Considerations:**
+- Auto-unlock after 30 minutes prevents permanent lockouts
+- Reduces help desk burden compared to manual unlock requirement
+- Users can self-recover from typos without administrative intervention
+
+---
+
+### Audit Policy Configuration
+
+**Configured comprehensive security event logging for threat detection, compliance, and forensics.**
+
+**Audit Settings:**
+
+| Event Category | Success | Failure | Rationale |
+|----------------|---------|---------|-----------|
+| **Account logon events** | ✓ | ✓ | Track all authentication attempts; detect unauthorized access and brute-force attacks |
+| **Account management** | ✓ | ✓ | Log user/group creation, modification, deletion; detect unauthorized privilege escalation |
+| **Directory service access** |  | ✓ | Log unauthorized AD access attempts; minimize noise from normal queries |
+| **Logon events** | ✓ | ✓ | Track session creation on local machines; complete login audit trail |
+| **Object access** |  | ✓ | Log unauthorized file/folder access attempts; avoid logging every file operation (massive volume) |
+| **Policy change** | ✓ | ✓ | Critical: detect attempts to disable auditing or modify security settings (attacker evasion) |
+| **Privilege use** |  | ✓ | Log failed privilege escalation attempts; success logging too verbose for general use |
+| **Process tracking** | Not configured | - | Extremely high volume; only enable during active investigations |
+| **System events** | ✓ | ✓ | Log startup/shutdown, security log clearing (cover-up attempts), time changes (log tampering) |
+
+**Log Volume Optimization:**
+- Success + Failure for critical security events (authentication, account changes, policy modifications)
+- Failure-only for high-volume categories (directory access, object access, privilege use)
+- Skipped extremely noisy categories (process tracking) to maintain usable log files
+- Configuration balances security visibility with log storage constraints
+
+**Security Use Cases:**
+
+**Threat Detection:**
+- Multiple failed login attempts followed by success = potential breach
+- Failed login attempts at unusual hours = reconnaissance or attack
+- Account creation outside business hours = unauthorized activity
+- Policy change events = potential attacker covering tracks
+- Security log cleared = evidence tampering
+
+**Compliance & Forensics:**
+- Complete audit trail of who accessed what and when
+- Account lifecycle documentation (creation, modification, deletion)
+- Administrative action tracking
+- Security incident reconstruction capability
+
+---
+
+### GPO Application and Scope
+
+**Deployment:**
+- GPO linked to domain root (awsumelab.local)
+- Applies to: All domain users and computers
+- Application: Computer policies apply on boot; User policies apply on login
+- Refresh interval: 90 minutes (default) or on demand via `gpupdate /force`
+
+**Testing and Verification:**
+- Forced policy update: `gpupdate /force`
+- Verify password policy: Attempt to create user with weak password (should fail)
+- Verify lockout policy: Make 4 failed login attempts (should lock account for 30 minutes)
+- Verify audit policy: Check Event Viewer for security events after policy-triggering actions
+
+**Production Considerations:**
+- Test in non-production OU before domain-wide deployment
+- Communicate password policy changes to users in advance
+- Monitor help desk calls during initial rollout
+- Review security logs regularly for audit policy effectiveness
+- Adjust thresholds based on organizational needs and security posture
+
+---
+
 ### Troubleshooting Notes
 
 **Issue: Ubuntu VM Lost DHCP Address**

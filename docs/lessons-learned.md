@@ -561,6 +561,79 @@ ProxyJump proxmox
 
 ---
 
+## Challenge 17: Balancing Security and Usability in Group Policy Design
+
+**Problem:**
+- Security policies can be overly restrictive and frustrate users
+- Lenient policies leave systems vulnerable to attacks
+- Default Windows settings often don't align with modern security best practices
+- Log volume from audit policies can overwhelm storage and make analysis difficult
+
+**Root Cause:**
+- Security and usability are often in tension
+- Legacy default settings (e.g., 8-character passwords, 90-day expiration) based on outdated thinking
+- Audit policies can generate massive log volumes if not carefully configured
+- No one-size-fits-all configuration; must consider organizational needs
+
+**Solution - Password Policy:**
+
+**Modern approach (configured):**
+- Longer passwords (12 characters) with less frequent changes (365 days)
+- Complexity required but passphrase support enabled
+- Users create ONE strong, memorable password instead of cycling through weak variants
+
+**Rationale:**
+- Research shows frequent password changes lead to weaker, predictable passwords
+- Users write down passwords they can't remember (security risk)
+- Long, complex, infrequently-changed passwords are more secure
+- Passphrases (e.g., "I Love Coffee And My Dog 2024!") are both strong and memorable
+
+**Solution - Account Lockout:**
+
+**Balanced approach (configured):**
+- 4 failed attempts = 30-minute lockout
+- Auto-unlock after timeout (no admin intervention required)
+- Administrator account lockout enabled (prevents unlimited brute-force)
+
+**Rationale:**
+- Stops brute-force attacks (4 attempts per 30 min = 125+ hours for 1,000 passwords)
+- Auto-unlock reduces help desk burden
+- Real-world experience: manual unlock requirement caused excessive downtime and help desk calls
+
+**Solution - Audit Policy:**
+
+**Strategic logging (configured):**
+- Both Success + Failure for critical events (authentication, account management, policy changes)
+- Failure-only for high-volume categories (directory access, object access, privilege use)
+- Skipped extremely noisy categories (process tracking)
+
+**Rationale:**
+- Every file access logged = thousands of events per minute = unusable
+- Failure events = unauthorized attempts = high security value, low volume
+- Policy changes logged = detect attackers disabling auditing
+- Log storage constraints require strategic choices
+
+**Lesson Learned:**
+- Security policies must balance protection with productivity
+- Modern security research contradicts some traditional practices (frequent password changes)
+- Real-world operational experience matters (help desk burden, user behavior)
+- Audit logging requires strategic configuration to avoid drowning in noise
+- Perfect security that prevents work is not actually secure (users find workarounds)
+- Consider attack vectors vs. operational impact for each policy decision
+- Test policies before domain-wide deployment
+- User education matters as much as technical controls
+
+**Skills Demonstrated:**
+- Understanding security vs. usability tradeoffs
+- Modern password policy design (NIST guidelines)
+- Brute-force attack prevention
+- Strategic audit log configuration
+- Enterprise Group Policy management
+- Security policy analysis and decision-making
+- Consideration of help desk operational impact
+
+---
+
 ## Key Takeaways
 
 **Technical Skills Gained:**

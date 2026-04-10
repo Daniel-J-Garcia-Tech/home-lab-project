@@ -22,7 +22,11 @@ A fully functional Active Directory deomain environment built for learning enter
 - Domain Controller deployment
 - Organizational Units (OUs) structure
 - User and Group management
-- Group Policy Objects (GPOs)
+- **Group Policy Objects (GPOs):**
+  - Desktop customization (wallpaper deployment)
+  - Windows Update configuration
+  - Network drive mapping automation
+  - **Enterprise security policies (password, lockout, audit)**
 - FSMO roles management
 
 ### Networking
@@ -99,6 +103,10 @@ A fully functional Active Directory deomain environment built for learning enter
 - **SSH configuration files for streamlined access**
 - **ProxyJump configuration for network segmentation**
 - **Offline antivirus definition updates (Windows Defender)**
+- **Enterprise password policies (length, complexity, history, expiration)**
+- **Account lockout policies (brute-force prevention)**
+- **Comprehensive audit policies (security event logging)**
+- **Modern security best practices (NIST guidelines, passphrase support)**
 - Network file shares with proper permissions
 - Share and NTFS permission management
 - Group Policy security filtering
