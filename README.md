@@ -4,8 +4,7 @@
 
 ## Overview
 
-A comprehensive enterprise IT infrastructure homelab built from scratch to demonstrate system administration, security hardening, and patch management skills in air-gapped environments. 
-This project showcases hands-on experience with Windows Server, Linux administration, virtualization, scripting, and modern security best practices.
+A comprehensive enterprise IT infrastructure homelab built from scratch to demonstrate system administration, security hardening, and patch management skills in air-gapped environments. This project showcases hands-on experience with Windows Server, Linux administration, virtualization, scripting, and modern security best practices.
 
 Built to meet the technical requirements for Air-Gapped Systems Administrator positions, with emphasis on offline patch management, backup/recovery procedures, and enterprise security configuration.
 
@@ -80,23 +79,36 @@ Built to meet the technical requirements for Air-Gapped Systems Administrator po
 - SSH server setup and hardening
 
 ### Scripting & Automation
-- **PowerShell scripting fundamentals**
-  - System health monitoring scripts
-  - Patch verification automation
+- **PowerShell scripting**
+  - System health monitoring and reporting
+  - Patch verification and validation
+  - Service monitoring and auto-recovery
+  - Multi-server remote queries and reporting
+  - Automated report generation with date-stamping
+  - Try-catch exception handling
   - Variables, objects, and cmdlets
   - WMI/CIM queries for system data
-  - Mathematical calculations and formatting
-  - Script creation and reusability
-- **Python scripting fundamentals**
-  - System information retrieval
-  - Package management validation
+  - Remote server administration
+- **Python scripting**
+  - System information gathering and inventory
+  - Package management and validation
+  - Pre-patch safety checks (disk space validation)
+  - Package snapshot comparison (before/after validation)
+  - Set operations for data analysis
   - subprocess for system commands
-  - Text processing and parsing
+  - File I/O and error handling
   - List comprehensions and filtering
-  - Cross-platform scripting
-- Bash scripting (WiFi startup automation)
-- Network service configuration
-- systemd service creation
+  - Cross-platform scripting concepts
+- **Bash scripting**
+  - Pre-patch configuration backup automation
+  - Package deployment preparation
+  - System snapshots and baselines
+  - Critical package verification
+  - WiFi startup automation
+  - TAR compression and archival
+  - File validation and verification
+  - Network service configuration
+  - systemd service creation
 
 **All automation scripts with detailed documentation are available in [/scripts](/scripts).**
 
@@ -147,13 +159,14 @@ Built to meet the technical requirements for Air-Gapped Systems Administrator po
 - Storage migration and disaster recovery
 
 **Scripting & Automation:**
-- PowerShell scripting (system monitoring, patch verification)
-- Python scripting (system information, package validation)
-- Bash scripting (network automation)
+- PowerShell scripting (system monitoring, patch verification, service recovery, multi-server reporting)
+- Python scripting (system information, package validation, pre-patch safety checks)
+- Bash scripting (network automation, backup automation, package deployment)
 - Cross-platform automation skills
 
 ## Project Status
 - Active deployment - Ongoing learning and expansion
 
 ---
+
 *This is a personal learning project for IT skill development.*

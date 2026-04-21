@@ -8,169 +8,242 @@ This directory contains automation and monitoring scripts created during the hom
 
 ### System-Health-Check.ps1
 
-**Platform:** Windows Server 2025  
-**Location:** `C:\Scripts\` on Domain Controller
-
-**Purpose:** Quick system status overview for daily health monitoring
+**Purpose:** Daily system health monitoring with automated reporting
 
 **Features:**
-- Computer name identification
-- Operating system version and build
-- System uptime calculation (days and hours)
+- Computer name and OS information
+- System uptime calculation
 - Memory usage analysis (used/total in GB)
-- Disk space reporting (C: drive usage and available space)
-- Color-coded console output for readability
+- Disk space reporting
+- Date-stamped report files
+- Error handling with try-catch
+- Color-coded console output
 
-**Output Example:**
-=== System Health Check ===
-Computer: SERVER-DC01
-OS: Microsoft Windows Server 2025 Datacenter
-Uptime: 3 days, 2 hours
-Memory: 1.52 GB used / 7.98 GB total
-Disk Space:
-C: - Used: 21.53 GB, Free: 77.49 GB
-Health check complete!
-
-**Technical Skills:**
-- `Get-CimInstance` for WMI/CIM queries
-- Object property manipulation
-- DateTime arithmetic
-- Mathematical calculations and rounding
-- Unit conversion (KB to GB)
-- Formatted console output with color
-
-**Use Case:** Run daily to verify server health, disk space availability, and identify potential resource constraints before they become critical issues.
+**Use Case:** Daily health checks with automated report generation for tracking system state over time.
 
 ---
 
 ### Check-Installed-Updates.ps1
 
-**Platform:** Windows Server 2025  
-**Location:** `C:\Scripts\` on Domain Controller
-
-**Purpose:** Verify patch deployment and track update history in air-gapped environment
+**Purpose:** Patch deployment verification and update history tracking
 
 **Features:**
 - Lists last 10 installed Windows updates
-- Displays HotFix ID, description, and installation date
-- Formatted table output for easy reading
-- Essential for offline patch validation
-
-**Output Example:**
-=== Installed Windows Updates ===
-Last 10 installed updates:
-KB5066131    Update           1/11/26
-KB5073379    Security Update  1/11/26
-KB5072725    Security Update  1/11/26
-...
-Report complete!
-
-**Technical Skills:**
-- `Get-HotFix` cmdlet for update queries
-- Pipeline operations (`|`)
-- Object selection and filtering
-- Table formatting
+- Computer name and timestamp
+- Date-stamped report files
+- HotFix ID, description, and installation date
+- Formatted table output
 
 **Use Case:** Critical for air-gapped patch management - verify updates were installed successfully when automated Windows Update is disabled.
 
 ---
 
+### Running-Services-Check.ps1
+
+**Purpose:** Monitor running services and generate service inventory
+
+**Features:**
+- Counts total running services
+- Filters by service status
+- Exports complete running services list to file
+- Computer name and timestamp
+
+**Use Case:** Baseline service state before/after patching or system changes.
+
+---
+
+### service-recovery-check.ps1
+
+**Purpose:** Post-patch service verification and auto-recovery
+
+**Features:**
+- Checks critical services (Windows Update, Time Service, Print Spooler)
+- Automatically starts stopped services
+- Try-catch error handling for each service
+- Color-coded status output (Green=Running, Yellow=Started, Red=Failed)
+- Date-stamped recovery reports
+
+**Use Case:** Post-patch validation - ensures critical services are running after updates or system changes.
+
+---
+
+### multi-server-patch-report.ps1
+
+**Purpose:** Multi-server patch compliance reporting
+
+**Features:**
+- Queries multiple servers remotely
+- Retrieves last 5 updates per server
+- Consolidated patch report across infrastructure
+- Per-server error handling
+- Date-stamped consolidated report
+
+**Use Case:** Enterprise patch compliance - check update status across multiple domain controllers or servers from single console.
+
+---
+
 ## Python Scripts (Linux)
 
-### system-info.py
+### System-info.py
 
-**Platform:** Ubuntu Server 24.04 LTS  
-**Location:** `/home/labadmin/scripts/`
-
-**Purpose:** Display comprehensive system information for Linux systems
+**Purpose:** System information gathering and documentation
 
 **Features:**
 - Hostname identification
-- Operating system and kernel version
-- Python version (runtime environment verification)
-- System uptime (human-readable format)
-- Clean, formatted output
+- OS and kernel version
+- Python version
+- System uptime
+- Date-stamped report files
+- Error handling for uptime command
 
-**Output Example:**
-=== System Information ===
-Hostname: ubuntu-lab
-OS: Linux 6.8.0-107-generic
-Python: 3.12.3
-Uptime: up 24 minutes
-Script complete!
-
-**Technical Skills:**
-- Module imports (`os`, `platform`, `subprocess`)
-- System command execution via subprocess
-- String formatting (f-strings)
-- Cross-platform system queries
-
-**Use Case:** Quick system verification and documentation, particularly useful for inventory management and health checks in air-gapped Linux infrastructure.
+**Use Case:** System inventory and documentation for air-gapped infrastructure.
 
 ---
 
 ### check-packages.py
 
-**Platform:** Ubuntu Server 24.04 LTS  
-**Location:** `/home/labadmin/scripts/`
-
-**Purpose:** Report on installed packages for patch validation and compliance
+**Purpose:** Package inventory and validation
 
 **Features:**
 - Counts total installed packages
-- Lists last 10 installed packages
-- Displays package names and versions
-- Formatted output for easy parsing
+- Lists last 10 installed packages with versions
+- Exports complete package list to file
+- Date-stamped reports
+- Error handling for dpkg command
 
-**Output Example:**
-=== Installed Packages Report ===
-Total packages installed: 492
-Last 10 installed packages:
-wireless-regdb                 2025.10.07-0ubuntu1~24.04.1
-xauth                          1:1.1.2-1build1
-zstd                           1.5.5+dfsg2-2build1.1
-...
-Report complete!
+**Use Case:** Package inventory baseline before/after patching for validation and compliance.
 
-**Technical Skills:**
-- subprocess module for system commands
-- Text processing and parsing
-- List comprehensions and filtering
-- String manipulation
-- Working with package management tools (dpkg)
+---
 
-**Use Case:** Essential for offline Linux patch management - verify package installations in air-gapped environments where automated update tracking isn't available. Equivalent to PowerShell's `Get-HotFix` for Linux systems.
+### Critical-package-check.py
+
+**Purpose:** Verify critical packages are installed
+
+**Features:**
+- Checks array of critical packages (openssh-server, curl, vim)
+- Pass/fail counters
+- Installation status reporting
+- Date-stamped validation reports
+
+**Use Case:** Pre-deployment validation - ensure required packages are present before system goes into production.
+
+---
+
+### patch-validation-check.py
+
+**Purpose:** Create package snapshot for patch validation
+
+**Features:**
+- Generates complete installed package list with versions
+- Exports to text file for comparison
+- Filters for installed packages only (ii status)
+- Package count reporting
+
+**Use Case:** Create "before" snapshot prior to patching - compare with "after" snapshot to validate changes.
+
+---
+
+### check-package-lists.py
+
+**Purpose:** Compare package snapshots to detect changes
+
+**Features:**
+- File existence validation
+- Set operations to find differences (added/removed packages)
+- Counts total changes
+- Error handling with exit codes
+
+**Use Case:** Post-patch validation - compare before/after snapshots to verify only expected packages were modified.
+
+---
+
+### prepatch-diskusage-check.py
+
+**Purpose:** Pre-patch disk space validation
+
+**Features:**
+- Checks multiple mount points (/, /home, /tmp)
+- Calculates percentage used
+- Warning thresholds (>80% = unsafe to patch)
+- Clear/Not safe to patch recommendations
+- Date-stamped validation reports
+
+**Use Case:** Pre-patch safety check - prevent patching failures due to insufficient disk space.
 
 ---
 
 ## Bash Scripts (Linux)
 
+### System-Snapshot.sh
+
+**Purpose:** Quick system state snapshot
+
+**Features:**
+- Hostname and timestamp
+- Kernel version
+- Total package count
+- Date-stamped snapshot files
+
+**Use Case:** Rapid system state capture for baseline documentation or pre-change snapshots.
+
+---
+
+### Bash-Critical-package-check.sh
+
+**Purpose:** Critical package verification with metrics
+
+**Features:**
+- Loops through critical package array
+- Pass/fail counters
+- Installation status reporting
+- Date-stamped reports
+
+**Use Case:** Pre-deployment validation checklist for required packages.
+
+---
+
+### pre-patch-backup.sh
+
+**Purpose:** Automated pre-patch configuration backup
+
+**Features:**
+- Creates date-organized backup directories
+- Backs up critical config files (hostname, network interfaces, DNS config)
+- Validates each file copy operation
+- Counts backed-up files
+- TAR compression for archival
+- Success/failure reporting per file
+
+**Use Case:** Pre-patch safety - backup critical configurations before system changes to enable rollback if needed.
+
+---
+
+### patch-deployment-package.sh
+
+**Purpose:** Package .deb files for offline deployment
+
+**Features:**
+- Validates .deb files exist before proceeding
+- Creates date-organized deployment directory
+- Copies and counts patch packages
+- TAR compression for transfer
+- Exit codes for automation integration
+
+**Use Case:** Air-gapped patch deployment - package updates for transfer to isolated systems via USB or offline media.
+
+---
+
 ### wpa_supplicant_startup.sh
 
-**Platform:** Proxmox VE 9.1 (Debian-based)  
-**Location:** `/etc/systemd/system/` (as systemd service)
+**Purpose:** WiFi auto-start documentation and configuration guide
 
-**Purpose:** Automated WiFi connection at boot for Proxmox host
+**Features:**
+- systemd service configuration
+- Network interface setup
+- Default route configuration
+- Troubleshooting documentation
 
-**Problem Solved:**  
-WiFi adapter (Intel iwlwifi) failed to initialize during boot sequence, causing network unavailability and requiring manual intervention.
-
-**Solution:**  
-Created custom systemd service to ensure wpa_supplicant starts with correct timing and parameters after network interfaces are available.
-
-**Implementation:**
-- systemd service file configuration
-- Network service dependencies (After=network.target)
-- Startup order management
-- WiFi authentication via wpa_supplicant
-
-**Technical Skills:**
-- systemd service creation
-- Network service troubleshooting
-- Startup sequence management
-- WiFi configuration (WPA2)
-
-**Use Case:** Essential for headless server operation - ensures reliable WiFi connectivity without manual intervention after reboots or power cycles.
+**Use Case:** Headless server WiFi connectivity - ensures reliable wireless network access after reboots without manual intervention.
 
 ---
 
@@ -178,29 +251,49 @@ Created custom systemd service to ensure wpa_supplicant starts with correct timi
 
 **Cross-Platform Scripting:**
 - PowerShell for Windows administration
-- Python for cross-platform automation
+- Python for cross-platform automation  
 - Bash for Linux system configuration
 
+**Advanced Concepts:**
+- Exception handling (try-catch in PowerShell, error handling in Python/Bash)
+- Remote server queries (PowerShell remoting)
+- Set operations for data comparison (Python)
+- Service auto-remediation
+- File validation and verification
+- Multi-server reporting
+- Date-stamped logging
+- Pass/fail metrics tracking
+- Safety thresholds and warnings
+- Backup automation with validation
+- Package deployment workflows
+
 **System Administration:**
-- Health monitoring and reporting
-- Patch validation and verification
-- Package management
-- Network service automation
+- Pre-patch validation workflows
+- Post-patch verification
+- Configuration backup and recovery
+- Package management and inventory
+- Service monitoring and recovery
+- Disk space management
+- Multi-server reporting
+- Health monitoring and alerting
 
 **Best Practices:**
 - Clear, commented code
 - Consistent formatting
-- Error handling
-- User-friendly output
-- Documentation and usage examples
+- Comprehensive error handling
+- User-friendly output with color coding
+- Date-stamped reports for tracking
+- File validation before operations
+- Exit codes for automation integration
+- Detailed documentation
 
 ---
 
 ## Usage Notes
 
 **PowerShell Scripts:**
-- Run with execution policy: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
-- Or run directly: `powershell.exe -ExecutionPolicy Bypass -File .\script.ps1`
+- Run with: `powershell.exe -ExecutionPolicy Bypass -File .\script.ps1`
+- Or set execution policy: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
 
 **Python Scripts:**
 - Make executable: `chmod +x script.py`
@@ -212,4 +305,26 @@ Created custom systemd service to ensure wpa_supplicant starts with correct timi
 
 ---
 
-*These scripts demonstrate practical automation skills for enterprise IT administration in both air-gapped and connected environments.*
+## Workflow Examples
+
+**Pre-Patch Workflow:**
+1. `prepatch-diskusage-check.py` - Verify sufficient disk space
+2. `pre-patch-backup.sh` - Backup critical configurations
+3. `patch-validation-check.py` - Create "before" package snapshot
+4. Apply patches
+5. `check-package-lists.py` - Compare before/after snapshots
+6. `service-recovery-check.ps1` - Verify critical services running
+
+**Multi-Server Compliance:**
+1. `multi-server-patch-report.ps1` - Check patch status across infrastructure
+2. Generate consolidated compliance report
+
+**Package Deployment (Air-Gapped):**
+1. `patch-deployment-package.sh` - Package .deb files for transfer
+2. Transfer compressed package to isolated system
+3. Extract and deploy packages
+4. `patch-validation-check.py` - Verify installation
+
+---
+
+*These scripts demonstrate practical automation skills for enterprise IT administration in both air-gapped and connected environments, with emphasis on safety, validation, and production-ready error handling.*
