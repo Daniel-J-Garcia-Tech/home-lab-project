@@ -33,7 +33,7 @@ Controlled Internet Access (Air-Gap Preservation)
  - Adapted script for remote execution, using Write-Output rather than Write-Host, so results return correctly to the console.
  - Executed scripts against a single agent, than ran a bulk script across both VM’s, with each endpoint returning its own results.
 
-##Deliberate Scope Decision: Linux Agent Not Deployed
+## Deliberate Scope Decision: Linux Agent Not Deployed
 
 Tactical RMM’s Linux and macOS agents require code-signed binaries available only through a paid monthly sponsorship. The only no cost path is an unofficial, unsupported third-part install script.
 
