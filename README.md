@@ -47,15 +47,16 @@ Built to meet the technical requirements for Air-Gapped Systems Administrator po
 - Thin client simulation
 - SSH server configuration and management
 - SSH jump host / ProxyJump usage
+- Remote monitoring and management (RMM) agent-based remote administration
 
 ### Patch Management & Maintenance
 - Air-gapped Windows patching workflow
 - Air-gapped Linux package management
 - Manual update deployment (Windows .msu, Linux .deb)
-- WSUS installation and configuration
+- - WSUS installation and evaluation of air-gapped limitations (upstream/downstream replica architecture)
 - Offline APT repository creation and maintenance
 - Update dependency management
-- Repository metadata generation (apt-ftparchive)
+- - Offline .deb package management and dependency resolution; local APT mirror setup (apt-mirror)
 
 ### Virtualization
 - Proxmox VE administration
@@ -132,6 +133,17 @@ Built to meet the technical requirements for Air-Gapped Systems Administrator po
 - Access control and permissions
 - Firewall configuration
 
+### Remote Monitoring & Management (RMM)
+- **Self-hosted Tactical RMM server deployment** (Django/Vue/Go stack on Ubuntu Server)
+- **Scoped on-demand internet access** (single-host NAT toggle preserving air-gap)
+- **Windows agent deployment** (workstation and domain controller endpoints)
+- **Endpoint monitoring** (disk space and service checks with alert thresholds)
+- **Alert validation** (verified monitoring by inducing failures)
+- **Patch-compliance scanning** (documented air-gap scanning limitations)
+- **Centralized script execution** (single-agent and bulk fleet-wide PowerShell)
+- **Internal DNS zone configuration** for service name resolution
+- Detailed writeup available in [RMM-Deployment.md](/RMM-Deployment.md)
+
 ## Key Learning Outcomes
 
 **Infrastructure & Administration:**
@@ -163,6 +175,11 @@ Built to meet the technical requirements for Air-Gapped Systems Administrator po
 - Python scripting (system information, package validation, pre-patch safety checks)
 - Bash scripting (network automation, backup automation, package deployment)
 - Cross-platform automation skills
+
+**Monitoring & Management:**
+- Self-hosted RMM deployment and fleet monitoring in an air-gapped environment
+- Endpoint agent management, alerting configuration, and centralized script execution
+- Understanding of air-gapped constraints on RMM patch scanning
 
 ## Project Status
 - Active deployment - Ongoing learning and expansion
